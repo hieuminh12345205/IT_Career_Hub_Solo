@@ -1,0 +1,1 @@
+console.log("IT Career Hub frontend loaded.");
