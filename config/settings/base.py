@@ -30,7 +30,7 @@ INSTALLED_APPS = [
     "django_filters",
 
     # Local apps
-    "apps.users",
+    "apps.users.apps.UsersConfig",
     "apps.companies",
     "apps.jobs",
     "apps.applications",
