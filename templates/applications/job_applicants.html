@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Ứng viên - {{ job.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="h3 mb-2">Ứng viên cho {{ job.title }}</h1>
+    <p class="text-muted mb-4">{{ job.company.name }}</p>
+
+    {% if applications %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle bg-white">
+                <thead>
+                    <tr>
+                        <th>Ứng viên</th>
+                        <th>CV</th>
+                        <th>Ngày ứng tuyển</th>
+                        <th>Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for application in applications %}
+                        <tr>
+                            <td>{{ application.candidate.username }}</td>
+                            <td><a href="{{ application.cv.url }}" target="_blank">Xem CV</a></td>
+                            <td>{{ application.applied_at|date:"d/m/Y" }}</td>
+                            <td>
+                                <form method="post" action="{% url 'applications:update_status' application.pk %}" class="d-flex gap-2">
+                                    {% csrf_token %}
+                                    <select name="status" class="form-select form-select-sm">
+                                        {% for value, label in status_choices %}
+                                            <option value="{{ value }}" {% if application.status == value %}selected{% endif %}>
+                                                {{ label }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit" class="btn btn-primary btn-sm">Lưu</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="text-muted">Chưa có ứng viên nào.</p>
+    {% endif %}
+</div>
+{% endblock %}

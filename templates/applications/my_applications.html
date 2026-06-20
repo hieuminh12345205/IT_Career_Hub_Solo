@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Đơn ứng tuyển của tôi{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="h3 mb-4">Đơn ứng tuyển của tôi</h1>
+
+    {% if applications %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle bg-white">
+                <thead>
+                    <tr>
+                        <th>Vị trí</th>
+                        <th>Công ty</th>
+                        <th>Ngày ứng tuyển</th>
+                        <th>Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for application in applications %}
+                        <tr>
+                            <td>{{ application.job.title }}</td>
+                            <td>{{ application.job.company.name }}</td>
+                            <td>{{ application.applied_at|date:"d/m/Y" }}</td>
+                            <td>{{ application.get_status_display }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="text-muted">Bạn chưa có đơn ứng tuyển nào.</p>
+    {% endif %}
+</div>
+{% endblock %}
