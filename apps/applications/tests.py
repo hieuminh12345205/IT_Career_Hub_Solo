@@ -1,7 +1,9 @@
 import shutil
 import tempfile
+from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import IntegrityError
 from django.test import SimpleTestCase
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -192,6 +194,19 @@ class ApplicationViewTests(TestCase):
         self.assertContains(response, "Bạn đã ứng tuyển công việc này rồi.")
         self.assertEqual(Application.objects.count(), 1)
 
+    @patch("apps.applications.forms.ApplicationForm.save", side_effect=IntegrityError)
+    def test_duplicate_race_returns_form_error_instead_of_server_error(self, _):
+        self.client.force_login(self.candidate)
+
+        response = self.client.post(
+            reverse("applications:apply", kwargs={"job_pk": self.job.pk}),
+            {"cover_letter": "Apply", "cv": self.pdf_file()},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Bạn đã ứng tuyển công việc này rồi.")
+        self.assertNotContains(response, "Ứng tuyển thành công.")
+
     def test_candidate_cannot_apply_to_closed_job(self):
         self.client.force_login(self.candidate)
 
@@ -216,9 +231,9 @@ class ApplicationViewTests(TestCase):
             {
                 "cover_letter": "Apply",
                 "cv": SimpleUploadedFile(
-                    "cv.txt",
+                    "fake.pdf",
                     b"not a pdf",
-                    content_type="text/plain",
+                    content_type="application/pdf",
                 ),
             },
         )
@@ -231,6 +246,7 @@ class ApplicationViewTests(TestCase):
         )
 
         self.assertEqual(non_pdf_response.status_code, 200)
+        self.assertContains(non_pdf_response, "CV phải là file PDF hợp lệ.")
         self.assertEqual(large_file_response.status_code, 200)
         self.assertContains(large_file_response, "CV không được lớn hơn 5MB.")
         self.assertFalse(Application.objects.exists())

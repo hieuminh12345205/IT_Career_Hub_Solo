@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import PermissionDenied
+from django.db import IntegrityError, transaction
 from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
@@ -62,8 +63,16 @@ class ApplicationCreateView(
     def form_valid(self, form):
         form.instance.candidate = self.request.user
         form.instance.job = self.job
+        try:
+            # Savepoint giúp request vẫn dùng được DB sau lỗi unique constraint.
+            with transaction.atomic():
+                response = super().form_valid(form)
+        except IntegrityError:
+            form.add_error(None, "Bạn đã ứng tuyển công việc này rồi.")
+            return self.form_invalid(form)
+
         messages.success(self.request, "Ứng tuyển thành công.")
-        return super().form_valid(form)
+        return response
 
 
 class MyApplicationsView(

@@ -29,8 +29,15 @@ class ApplicationForm(forms.ModelForm):
         if cv.size > MAX_CV_SIZE:
             raise forms.ValidationError("CV không được lớn hơn 5MB.")
 
-        if getattr(cv, "content_type", None) != "application/pdf":
-            raise forms.ValidationError("CV phải là file PDF.")
+        content_type = getattr(cv, "content_type", None)
+
+        # MIME có thể bị giả mạo, nên kiểm tra thêm chữ ký ở đầu file PDF.
+        cv.seek(0)
+        header = cv.read(5)
+        cv.seek(0)
+
+        if content_type != "application/pdf" or header != b"%PDF-":
+            raise forms.ValidationError("CV phải là file PDF hợp lệ.")
 
         return cv
 
