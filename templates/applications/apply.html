@@ -9,6 +9,14 @@
             <h1 class="h3 mb-2">Ứng tuyển {{ job.title }}</h1>
             <p class="text-muted">{{ job.company.name }}</p>
 
+            <form method="post" action="{% url 'applications:toggle_bookmark' job.pk %}" class="mb-3">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <button type="submit" class="btn btn-outline-secondary btn-sm">
+                    {% if is_bookmarked %}Bỏ lưu công việc{% else %}Lưu công việc{% endif %}
+                </button>
+            </form>
+
             <form method="post" enctype="multipart/form-data" class="card card-body">
                 {% csrf_token %}
                 {{ form.as_p }}

@@ -4,6 +4,8 @@ from .views import (
     ApplicationCreateView,
     JobApplicantsView,
     MyApplicationsView,
+    MyBookmarksView,
+    toggle_bookmark,
     update_application_status,
 )
 
@@ -16,6 +18,12 @@ urlpatterns = [
         name="apply",
     ),
     path("mine/", MyApplicationsView.as_view(), name="my_applications"),
+    path("bookmarks/", MyBookmarksView.as_view(), name="my_bookmarks"),
+    path(
+        "jobs/<int:job_pk>/bookmark/",
+        toggle_bookmark,
+        name="toggle_bookmark",
+    ),
     path(
         "jobs/<int:job_pk>/applicants/",
         JobApplicantsView.as_view(),

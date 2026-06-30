@@ -30,6 +30,15 @@
                 <li class="nav-item">
                     <a class="nav-link" href="#">Công ty</a>
                 </li>
+
+                {% if user.is_authenticated and user.role == "candidate" %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'applications:my_applications' %}">Đơn ứng tuyển</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'applications:my_bookmarks' %}">Việc đã lưu</a>
+                    </li>
+                {% endif %}
             </ul>
 
             <div class="d-flex gap-2">

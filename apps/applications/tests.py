@@ -1,9 +1,12 @@
 import shutil
 import tempfile
+from io import StringIO
 from unittest.mock import patch
 
+from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.db import IntegrityError
+from django.core.management import call_command
+from django.db import IntegrityError, transaction
 from django.test import SimpleTestCase
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -98,6 +101,7 @@ class ApplicationViewTests(TestCase):
     def setUp(self):
         self.candidate = User.objects.create_user(
             username="candidate",
+            email="candidate@example.com",
             password="test-password",
             role=User.Role.CANDIDATE,
         )
@@ -108,11 +112,17 @@ class ApplicationViewTests(TestCase):
         )
         self.recruiter = User.objects.create_user(
             username="recruiter",
+            email="recruiter@example.com",
             password="test-password",
             role=User.Role.RECRUITER,
         )
         self.other_recruiter = User.objects.create_user(
             username="other-recruiter",
+            password="test-password",
+            role=User.Role.RECRUITER,
+        )
+        self.company_recruiter = User.objects.create_user(
+            username="company-recruiter",
             password="test-password",
             role=User.Role.RECRUITER,
         )
@@ -128,6 +138,8 @@ class ApplicationViewTests(TestCase):
             description="Company description",
             location="Ho Chi Minh City",
         )
+        self.company_recruiter.recruiter_profile.company = self.company
+        self.company_recruiter.recruiter_profile.save()
         self.job = self.create_job(self.company, "Django Developer")
         self.closed_job = self.create_job(
             self.company,
@@ -163,6 +175,77 @@ class ApplicationViewTests(TestCase):
             job=job or self.job,
             cv=self.pdf_file(),
         )
+
+    def test_database_rejects_duplicate_candidate_and_job(self):
+        self.create_application()
+
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            self.create_application()
+
+    def test_apply_page_is_available_for_candidate_and_open_job(self):
+        self.client.force_login(self.candidate)
+
+        response = self.client.get(
+            reverse("applications:apply", kwargs={"job_pk": self.job.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["job"], self.job)
+        self.assertContains(response, "Django Developer")
+
+    def test_closed_job_does_not_expose_apply_page(self):
+        self.client.force_login(self.candidate)
+
+        response = self.client.get(
+            reverse(
+                "applications:apply",
+                kwargs={"job_pk": self.closed_job.pk},
+            )
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_recruiter_cannot_access_candidate_views(self):
+        self.client.force_login(self.recruiter)
+
+        apply_response = self.client.get(
+            reverse("applications:apply", kwargs={"job_pk": self.job.pk})
+        )
+        mine_response = self.client.get(reverse("applications:my_applications"))
+
+        self.assertEqual(apply_response.status_code, 403)
+        self.assertEqual(mine_response.status_code, 403)
+
+    def test_anonymous_user_is_redirected_from_application_views(self):
+        responses = (
+            (
+                "apply",
+                self.client.get(
+                    reverse(
+                        "applications:apply",
+                        kwargs={"job_pk": self.job.pk},
+                    )
+                ),
+            ),
+            (
+                "my_applications",
+                self.client.get(reverse("applications:my_applications")),
+            ),
+            (
+                "job_applicants",
+                self.client.get(
+                    reverse(
+                        "applications:job_applicants",
+                        kwargs={"job_pk": self.job.pk},
+                    )
+                ),
+            ),
+        )
+
+        for view_name, response in responses:
+            with self.subTest(view=view_name):
+                self.assertEqual(response.status_code, 302)
+                self.assertIn("/accounts/login/", response.url)
 
     def test_candidate_can_apply_to_active_job(self):
         self.client.force_login(self.candidate)
@@ -218,8 +301,7 @@ class ApplicationViewTests(TestCase):
             {"cover_letter": "Apply", "cv": self.pdf_file()},
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Công việc này đã đóng ứng tuyển.")
+        self.assertEqual(response.status_code, 404)
         self.assertFalse(Application.objects.exists())
 
     def test_cv_must_be_pdf_and_not_larger_than_5mb(self):
@@ -286,6 +368,32 @@ class ApplicationViewTests(TestCase):
         self.assertIn(application, response.context["applications"])
         self.assertEqual(forbidden_response.status_code, 404)
 
+    def test_candidate_cannot_access_job_applicants(self):
+        self.client.force_login(self.candidate)
+
+        response = self.client.get(
+            reverse(
+                "applications:job_applicants",
+                kwargs={"job_pk": self.job.pk},
+            )
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_company_profile_recruiter_can_view_job_applicants(self):
+        application = self.create_application()
+        self.client.force_login(self.company_recruiter)
+
+        response = self.client.get(
+            reverse(
+                "applications:job_applicants",
+                kwargs={"job_pk": self.job.pk},
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(application, response.context["applications"])
+
     def test_recruiter_can_update_application_status(self):
         application = self.create_application()
         self.client.force_login(self.recruiter)
@@ -324,6 +432,57 @@ class ApplicationViewTests(TestCase):
         application.refresh_from_db()
         self.assertEqual(application.status, Application.Status.PENDING)
 
+    def test_other_recruiter_cannot_update_application_status(self):
+        application = self.create_application()
+        self.client.force_login(self.other_recruiter)
+
+        response = self.client.post(
+            reverse(
+                "applications:update_status",
+                kwargs={"pk": application.pk},
+            ),
+            {"status": Application.Status.ACCEPTED},
+        )
+
+        self.assertEqual(response.status_code, 404)
+        application.refresh_from_db()
+        self.assertEqual(application.status, Application.Status.PENDING)
+
+    def test_update_application_status_requires_post(self):
+        application = self.create_application()
+        self.client.force_login(self.recruiter)
+
+        response = self.client.get(
+            reverse(
+                "applications:update_status",
+                kwargs={"pk": application.pk},
+            )
+        )
+
+        self.assertEqual(response.status_code, 405)
+
+    def test_company_profile_recruiter_can_update_status(self):
+        application = self.create_application()
+        self.client.force_login(self.company_recruiter)
+
+        response = self.client.post(
+            reverse(
+                "applications:update_status",
+                kwargs={"pk": application.pk},
+            ),
+            {"status": Application.Status.REVIEWING},
+        )
+
+        self.assertRedirects(
+            response,
+            reverse(
+                "applications:job_applicants",
+                kwargs={"job_pk": self.job.pk},
+            ),
+        )
+        application.refresh_from_db()
+        self.assertEqual(application.status, Application.Status.REVIEWING)
+
     def test_invalid_status_is_rejected(self):
         application = self.create_application()
         self.client.force_login(self.recruiter)
@@ -339,3 +498,137 @@ class ApplicationViewTests(TestCase):
         self.assertEqual(response.status_code, 400)
         application.refresh_from_db()
         self.assertEqual(application.status, Application.Status.PENDING)
+
+    def test_candidate_can_toggle_bookmark(self):
+        self.client.force_login(self.candidate)
+        url = reverse(
+            "applications:toggle_bookmark",
+            kwargs={"job_pk": self.job.pk},
+        )
+
+        create_response = self.client.post(url)
+
+        self.assertRedirects(create_response, reverse("applications:my_bookmarks"))
+        self.assertTrue(
+            Bookmark.objects.filter(
+                candidate=self.candidate,
+                job=self.job,
+            ).exists()
+        )
+
+        delete_response = self.client.post(
+            url,
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(delete_response.status_code, 200)
+        self.assertEqual(delete_response.json(), {"bookmarked": False})
+        self.assertFalse(Bookmark.objects.exists())
+
+    def test_my_bookmarks_only_shows_current_candidate_records(self):
+        own_bookmark = Bookmark.objects.create(candidate=self.candidate, job=self.job)
+        other_bookmark = Bookmark.objects.create(
+            candidate=self.other_candidate,
+            job=self.other_job,
+        )
+        self.client.force_login(self.candidate)
+
+        response = self.client.get(reverse("applications:my_bookmarks"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(own_bookmark, response.context["bookmarks"])
+        self.assertNotIn(other_bookmark, response.context["bookmarks"])
+
+    def test_recruiter_cannot_use_candidate_bookmark_views(self):
+        self.client.force_login(self.recruiter)
+
+        list_response = self.client.get(reverse("applications:my_bookmarks"))
+        toggle_response = self.client.post(
+            reverse(
+                "applications:toggle_bookmark",
+                kwargs={"job_pk": self.job.pk},
+            )
+        )
+
+        self.assertEqual(list_response.status_code, 403)
+        self.assertEqual(toggle_response.status_code, 403)
+        self.assertFalse(Bookmark.objects.exists())
+
+    def test_full_application_flow_sends_both_notifications(self):
+        self.client.force_login(self.candidate)
+
+        apply_response = self.client.post(
+            reverse("applications:apply", kwargs={"job_pk": self.job.pk}),
+            {"cover_letter": "I would like to apply.", "cv": self.pdf_file()},
+        )
+
+        self.assertRedirects(
+            apply_response,
+            reverse("applications:my_applications"),
+        )
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["recruiter@example.com"])
+        self.assertIn("Ứng viên mới", mail.outbox[0].subject)
+
+        application = Application.objects.get()
+        self.client.force_login(self.recruiter)
+        review_response = self.client.post(
+            reverse(
+                "applications:update_status",
+                kwargs={"pk": application.pk},
+            ),
+            {"status": Application.Status.REVIEWING},
+        )
+
+        self.assertRedirects(
+            review_response,
+            reverse(
+                "applications:job_applicants",
+                kwargs={"job_pk": self.job.pk},
+            ),
+        )
+        application.refresh_from_db()
+        self.assertEqual(application.status, Application.Status.REVIEWING)
+        self.assertEqual(len(mail.outbox), 2)
+        self.assertEqual(mail.outbox[1].to, ["candidate@example.com"])
+        self.assertIn("Reviewing", mail.outbox[1].body)
+
+    def test_unchanged_status_does_not_send_email(self):
+        application = self.create_application()
+        self.client.force_login(self.recruiter)
+
+        response = self.client.post(
+            reverse(
+                "applications:update_status",
+                kwargs={"pk": application.pk},
+            ),
+            {"status": Application.Status.PENDING},
+        )
+
+        self.assertRedirects(
+            response,
+            reverse(
+                "applications:job_applicants",
+                kwargs={"job_pk": self.job.pk},
+            ),
+        )
+        self.assertEqual(len(mail.outbox), 0)
+
+
+class SeedDataCommandTests(TestCase):
+    def test_seed_data_creates_demo_records_and_is_idempotent(self):
+        output = StringIO()
+
+        call_command("seed_data", stdout=output)
+        call_command("seed_data", stdout=output)
+
+        candidate = User.objects.get(username="demo_candidate")
+        recruiter = User.objects.get(username="demo_recruiter")
+        self.assertTrue(candidate.check_password("Demo@12345"))
+        self.assertEqual(candidate.role, User.Role.CANDIDATE)
+        self.assertEqual(recruiter.role, User.Role.RECRUITER)
+        self.assertEqual(Company.objects.count(), 1)
+        self.assertEqual(Job.objects.count(), 2)
+        self.assertEqual(Application.objects.count(), 1)
+        self.assertEqual(Bookmark.objects.count(), 1)
+        self.assertIn("Đã tạo dữ liệu mẫu", output.getvalue())
