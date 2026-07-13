@@ -1,8 +1,13 @@
+import shutil
+import tempfile
 from unittest.mock import patch
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db.models.signals import post_save
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase, override_settings
+from django.urls import reverse
 
+from .forms import CandidateProfileForm, RecruiterProfileForm
 from .models import CandidateProfile, RecruiterProfile, User
 from .signals import create_role_profile
 
@@ -99,3 +104,84 @@ class UserProfileSignalTests(SimpleTestCase):
 
         candidate_get_or_create.assert_not_called()
         recruiter_get_or_create.assert_not_called()
+
+
+class UserFlowTests(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.media_root = tempfile.mkdtemp()
+        cls.media_override = override_settings(MEDIA_ROOT=cls.media_root)
+        cls.media_override.enable()
+        super().setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        cls.media_override.disable()
+        shutil.rmtree(cls.media_root, ignore_errors=True)
+
+    @staticmethod
+    def pdf_file(name="profile.pdf", content=b"%PDF-1.4 profile"):
+        return SimpleUploadedFile(name, content, content_type="application/pdf")
+
+    def test_candidate_signup_sets_role_and_profile(self):
+        response = self.client.post(
+            reverse("users:candidate_signup"),
+            {
+                "username": "new-candidate",
+                "email": "candidate@example.com",
+                "password1": "Strong-pass-123!",
+                "password2": "Strong-pass-123!",
+            },
+        )
+
+        self.assertRedirects(response, reverse("users:candidate_profile"))
+        user = User.objects.get(username="new-candidate")
+        self.assertEqual(user.role, User.Role.CANDIDATE)
+        self.assertTrue(CandidateProfile.objects.filter(user=user).exists())
+
+    def test_recruiter_signup_sets_role_and_profile(self):
+        response = self.client.post(
+            reverse("users:recruiter_signup"),
+            {
+                "username": "new-recruiter",
+                "email": "recruiter@example.com",
+                "password1": "Strong-pass-123!",
+                "password2": "Strong-pass-123!",
+            },
+        )
+
+        self.assertRedirects(response, reverse("companies:manage_company"))
+        user = User.objects.get(username="new-recruiter")
+        self.assertEqual(user.role, User.Role.RECRUITER)
+        self.assertTrue(RecruiterProfile.objects.filter(user=user).exists())
+
+    def test_recruiter_cannot_self_assign_company_in_profile_form(self):
+        self.assertNotIn("company", RecruiterProfileForm().fields)
+
+    def test_candidate_profile_rejects_invalid_cv(self):
+        form = CandidateProfileForm(
+            files={
+                "cv_file": SimpleUploadedFile(
+                    "fake.pdf", b"not pdf", content_type="application/pdf"
+                )
+            }
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("CV phải là file PDF hợp lệ.", form.errors["cv_file"])
+
+    def test_candidate_can_download_own_cv_through_protected_endpoint(self):
+        user = User.objects.create_user(
+            username="candidate-with-cv",
+            password="Strong-pass-123!",
+            role=User.Role.CANDIDATE,
+        )
+        profile = user.candidate_profile
+        profile.cv_file.save("profile.pdf", self.pdf_file(), save=True)
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("users:candidate_cv"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")

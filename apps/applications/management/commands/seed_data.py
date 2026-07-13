@@ -24,6 +24,15 @@ class Command(BaseCommand):
             first_name="Demo",
             last_name="Candidate",
         )
+        self._upsert_user(
+            username="demo_admin",
+            email="admin@example.com",
+            role=User.Role.ADMIN,
+            first_name="Demo",
+            last_name="Admin",
+            is_staff=True,
+            is_superuser=True,
+        )
 
         company, _ = Company.objects.update_or_create(
             recruiter=recruiter,
@@ -66,25 +75,26 @@ class Command(BaseCommand):
         )
         intern_job.skills.set([python_skill, django_skill])
 
-        Application.objects.get_or_create(
-            candidate=candidate,
-            job=backend_job,
-            defaults={
-                "cv": "application_cvs/demo-cv.pdf",
-                "cover_letter": "Tôi muốn ứng tuyển vị trí Python Backend Developer.",
-            },
-        )
         Bookmark.objects.get_or_create(candidate=candidate, job=intern_job)
 
         self.stdout.write(
             self.style.SUCCESS(
                 "Đã tạo dữ liệu mẫu. Đăng nhập bằng demo_candidate hoặc "
-                "demo_recruiter với mật khẩu Demo@12345."
+                "demo_recruiter với mật khẩu Demo@12345. Admin: demo_admin "
+                "với mật khẩu Demo@12345."
             )
         )
 
     @staticmethod
-    def _upsert_user(username, email, role, first_name, last_name):
+    def _upsert_user(
+        username,
+        email,
+        role,
+        first_name,
+        last_name,
+        is_staff=False,
+        is_superuser=False,
+    ):
         user, _ = User.objects.get_or_create(
             username=username,
             defaults={"email": email, "role": role},
@@ -93,6 +103,8 @@ class Command(BaseCommand):
         user.role = role
         user.first_name = first_name
         user.last_name = last_name
+        user.is_staff = is_staff
+        user.is_superuser = is_superuser
         user.set_password("Demo@12345")
         user.save()
         return user

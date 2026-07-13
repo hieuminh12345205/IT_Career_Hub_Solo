@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Tin tuyển dụng của tôi{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Tin tuyển dụng của tôi</h1>
+            <p class="text-muted mb-0">Quản lý các job thuộc công ty của bạn.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'jobs:dashboard' %}" class="btn btn-outline-primary">Xem thống kê</a>
+            <a href="{% url 'jobs:create' %}" class="btn btn-primary">Đăng tin mới</a>
+        </div>
+    </div>
+
+    {% if jobs %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle bg-white">
+                <thead>
+                    <tr>
+                        <th>Vị trí</th>
+                        <th>Công ty</th>
+                        <th>Trạng thái</th>
+                        <th>Ngày tạo</th>
+                        <th class="text-end">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job in jobs %}
+                        <tr>
+                            <td><a href="{% url 'jobs:detail' job.pk %}">{{ job.title }}</a></td>
+                            <td>{{ job.company.name }}</td>
+                            <td><span class="badge {% if job.is_active %}text-bg-success{% else %}text-bg-secondary{% endif %}">{% if job.is_active %}Đang tuyển{% else %}Đã đóng{% endif %}</span></td>
+                            <td>{{ job.created_at|date:"d/m/Y" }}</td>
+                            <td class="text-end">
+                                <a href="{% url 'applications:job_applicants' job.pk %}" class="btn btn-outline-secondary btn-sm">Ứng viên</a>
+                                <a href="{% url 'jobs:edit' job.pk %}" class="btn btn-outline-primary btn-sm">Sửa</a>
+                                <a href="{% url 'jobs:delete' job.pk %}" class="btn btn-outline-danger btn-sm">Xóa</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="card card-body text-center border-0 shadow-sm">
+            <p class="text-muted">Bạn chưa có tin tuyển dụng nào.</p>
+            <a href="{% url 'jobs:create' %}" class="btn btn-primary mx-auto">Đăng tin đầu tiên</a>
+        </div>
+    {% endif %}
+
+    {% if is_paginated %}
+        <nav class="mt-4" aria-label="Phân trang tin tuyển dụng">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Trước</a></li>
+                {% endif %}
+                <li class="page-item active"><span class="page-link">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span></li>
+                {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Sau</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>
+{% endblock %}

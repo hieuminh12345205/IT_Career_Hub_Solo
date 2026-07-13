@@ -13,7 +13,7 @@
                     <div class="card card-body">
                         <div class="d-flex flex-wrap justify-content-between gap-3">
                             <div>
-                                <h2 class="h5 mb-1">{{ bookmark.job.title }}</h2>
+                                <h2 class="h5 mb-1"><a href="{% url 'jobs:detail' bookmark.job.pk %}">{{ bookmark.job.title }}</a></h2>
                                 <p class="text-muted mb-1">{{ bookmark.job.company.name }}</p>
                                 <span class="badge {% if bookmark.job.is_active %}text-bg-success{% else %}text-bg-secondary{% endif %}">
                                     {% if bookmark.job.is_active %}Đang tuyển{% else %}Đã đóng{% endif %}

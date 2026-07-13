@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Hồ sơ Candidate{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <h1 class="h3 mb-4">Hồ sơ Candidate</h1>
+            <form method="post" enctype="multipart/form-data" class="card card-body shadow-sm border-0">
+                {% csrf_token %}
+                <h2 class="h5">Thông tin tài khoản</h2>
+                {{ user_form|crispy }}
+                <hr>
+                <h2 class="h5">Thông tin ứng viên</h2>
+                {{ form|crispy }}
+                {% if object.cv_file %}
+                    <p class="small text-muted">
+                        CV hiện tại:
+                        <a href="{% url 'users:candidate_cv' %}" target="_blank" rel="noopener">Xem CV</a>
+                    </p>
+                {% endif %}
+                <button type="submit" class="btn btn-primary">Lưu hồ sơ</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

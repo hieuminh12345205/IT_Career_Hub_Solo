@@ -5,6 +5,7 @@ from .views import (
     JobApplicantsView,
     MyApplicationsView,
     MyBookmarksView,
+    download_application_cv,
     toggle_bookmark,
     update_application_status,
 )
@@ -29,6 +30,7 @@ urlpatterns = [
         JobApplicantsView.as_view(),
         name="job_applicants",
     ),
+    path("<int:pk>/cv/", download_application_cv, name="download_cv"),
     path(
         "<int:pk>/status/",
         update_application_status,

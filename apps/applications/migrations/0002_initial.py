@@ -10,30 +10,38 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('applications', '0001_initial'),
-        ('jobs', '0001_initial'),
+        ("applications", "0001_initial"),
+        ("jobs", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='application',
-            name='candidate',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL),
+            model_name="application",
+            name="candidate",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL
+            ),
         ),
         migrations.AddField(
-            model_name='application',
-            name='job',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='jobs.job'),
+            model_name="application",
+            name="job",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE, to="jobs.job"
+            ),
         ),
         migrations.AddField(
-            model_name='bookmark',
-            name='candidate',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL),
+            model_name="bookmark",
+            name="candidate",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL
+            ),
         ),
         migrations.AddField(
-            model_name='bookmark',
-            name='job',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='jobs.job'),
+            model_name="bookmark",
+            name="job",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE, to="jobs.job"
+            ),
         ),
     ]

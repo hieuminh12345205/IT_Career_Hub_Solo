@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Hồ sơ Recruiter{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Hồ sơ Recruiter</h1>
+                <a href="{% url 'companies:manage_company' %}" class="btn btn-outline-primary btn-sm">Quản lý công ty</a>
+            </div>
+            <form method="post" enctype="multipart/form-data" class="card card-body shadow-sm border-0">
+                {% csrf_token %}
+                <h2 class="h5">Thông tin tài khoản</h2>
+                {{ user_form|crispy }}
+                <hr>
+                <h2 class="h5">Thông tin tuyển dụng</h2>
+                {{ form|crispy }}
+                <button type="submit" class="btn btn-primary">Lưu hồ sơ</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

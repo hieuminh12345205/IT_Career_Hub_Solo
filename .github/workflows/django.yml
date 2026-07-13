@@ -15,28 +15,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: it_career_hub
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d it_career_hub"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     env:
-      DEBUG: "True"
-      DB_NAME: it_career_hub
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      DB_HOST: localhost
-      DB_PORT: "5432"
+      DJANGO_SETTINGS_MODULE: config.settings.test
 
     steps:
       - name: Checkout
@@ -55,10 +35,15 @@ jobs:
           python -m pip install -r requirements/dev.txt
 
       - name: Check Django project
-        run: python manage.py check
+        run: python manage.py check --settings=config.settings.test
+
+      - name: Check Python errors
+        run: python -m flake8 .
 
       - name: Check migrations
-        run: python manage.py makemigrations --check --dry-run
+        run: >-
+          python manage.py makemigrations --check --dry-run
+          --settings=config.settings.test
 
       - name: Run tests
-        run: python manage.py test
+        run: python manage.py test --settings=config.settings.test

@@ -2,7 +2,6 @@ from django import forms
 
 from .models import Application
 
-
 MAX_CV_SIZE = 5 * 1024 * 1024
 
 

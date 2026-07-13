@@ -7,8 +7,7 @@ from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
 from django.db import IntegrityError, transaction
-from django.test import SimpleTestCase
-from django.test import TestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
 from apps.companies.models import Company
@@ -394,6 +393,147 @@ class ApplicationViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(application, response.context["applications"])
 
+    def test_applicant_list_links_to_protected_cv_download(self):
+        application = self.create_application()
+        self.client.force_login(self.recruiter)
+
+        response = self.client.get(
+            reverse(
+                "applications:job_applicants",
+                kwargs={"job_pk": self.job.pk},
+            )
+        )
+
+        self.assertContains(
+            response,
+            reverse("applications:download_cv", kwargs={"pk": application.pk}),
+        )
+        self.assertNotContains(response, application.cv.url)
+
+    def test_application_cv_is_not_served_from_direct_media_url(self):
+        application = self.create_application()
+
+        response = self.client.get(application.cv.url)
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_job_owner_can_download_application_cv(self):
+        application = self.create_application()
+        self.client.force_login(self.recruiter)
+
+        response = self.client.get(
+            reverse("applications:download_cv", kwargs={"pk": application.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn("attachment;", response["Content-Disposition"])
+        self.assertEqual(response["Cache-Control"], "private, no-store")
+        self.assertEqual(response["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(b"".join(response.streaming_content), b"%PDF-1.4 test")
+
+    def test_assigned_company_recruiter_can_download_application_cv(self):
+        application = self.create_application()
+        self.client.force_login(self.company_recruiter)
+
+        response = self.client.get(
+            reverse("applications:download_cv", kwargs={"pk": application.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(b"".join(response.streaming_content), b"%PDF-1.4 test")
+
+    def test_other_recruiter_cannot_download_application_cv(self):
+        application = self.create_application()
+        self.client.force_login(self.other_recruiter)
+
+        response = self.client.get(
+            reverse("applications:download_cv", kwargs={"pk": application.pk})
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_candidate_cannot_download_application_cv(self):
+        application = self.create_application()
+        self.client.force_login(self.candidate)
+
+        response = self.client.get(
+            reverse("applications:download_cv", kwargs={"pk": application.pk})
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_anonymous_user_is_redirected_from_application_cv(self):
+        application = self.create_application()
+
+        response = self.client.get(
+            reverse("applications:download_cv", kwargs={"pk": application.pk})
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_admin_can_download_application_cv(self):
+        application = self.create_application()
+        admin = User.objects.create_user(
+            username="admin",
+            password="test-password",
+            role=User.Role.ADMIN,
+        )
+        self.client.force_login(admin)
+
+        response = self.client.get(
+            reverse("applications:download_cv", kwargs={"pk": application.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(b"".join(response.streaming_content), b"%PDF-1.4 test")
+
+    def test_admin_can_review_applicants_and_update_status(self):
+        application = self.create_application()
+        admin = User.objects.create_user(
+            username="review-admin",
+            password="test-password",
+            role=User.Role.ADMIN,
+        )
+        self.client.force_login(admin)
+
+        applicants_response = self.client.get(
+            reverse(
+                "applications:job_applicants",
+                kwargs={"job_pk": self.job.pk},
+            )
+        )
+        status_response = self.client.post(
+            reverse("applications:update_status", kwargs={"pk": application.pk}),
+            {"status": Application.Status.ACCEPTED},
+        )
+
+        self.assertEqual(applicants_response.status_code, 200)
+        self.assertRedirects(
+            status_response,
+            reverse(
+                "applications:job_applicants",
+                kwargs={"job_pk": self.job.pk},
+            ),
+        )
+        application.refresh_from_db()
+        self.assertEqual(application.status, Application.Status.ACCEPTED)
+
+    def test_missing_application_cv_file_returns_404(self):
+        application = Application.objects.create(
+            candidate=self.candidate,
+            job=self.job,
+            cv="application_cvs/missing.pdf",
+        )
+        self.client.force_login(self.recruiter)
+
+        response = self.client.get(
+            reverse("applications:download_cv", kwargs={"pk": application.pk})
+        )
+
+        self.assertEqual(response.status_code, 404)
+
     def test_recruiter_can_update_application_status(self):
         application = self.create_application()
         self.client.force_login(self.recruiter)
@@ -629,6 +769,6 @@ class SeedDataCommandTests(TestCase):
         self.assertEqual(recruiter.role, User.Role.RECRUITER)
         self.assertEqual(Company.objects.count(), 1)
         self.assertEqual(Job.objects.count(), 2)
-        self.assertEqual(Application.objects.count(), 1)
+        self.assertEqual(Application.objects.count(), 0)
         self.assertEqual(Bookmark.objects.count(), 1)
         self.assertIn("Đã tạo dữ liệu mẫu", output.getvalue())

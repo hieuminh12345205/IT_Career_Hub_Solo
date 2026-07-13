@@ -1,17 +1,19 @@
+from pathlib import Path
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
-from django.db.models import Q
-from django.http import HttpResponseBadRequest, JsonResponse
+from django.http import FileResponse, Http404, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 from django.views.generic import CreateView, ListView
 
 from apps.jobs.models import Job
+from apps.jobs.services import is_recruiter_or_admin, jobs_managed_by
 from apps.users.models import User
 
 from .forms import ApplicationForm
@@ -20,13 +22,6 @@ from .notifications import (
     notify_candidate_status_changed,
     notify_recruiters_new_application,
 )
-
-
-def jobs_managed_by(recruiter):
-    """Jobs owned directly or assigned through RecruiterProfile.company."""
-    return Job.objects.filter(
-        Q(company__recruiter=recruiter) | Q(company__recruiter_profiles__user=recruiter)
-    ).distinct()
 
 
 class RoleRequiredMixin(UserPassesTestMixin):
@@ -49,7 +44,7 @@ class RecruiterRequiredMixin(RoleRequiredMixin):
     """Giới hạn view cho user có role Recruiter."""
 
     def test_func(self):
-        return self.request.user.role == User.Role.RECRUITER
+        return is_recruiter_or_admin(self.request.user)
 
 
 class ApplicationCreateView(
@@ -176,10 +171,42 @@ class JobApplicantsView(
 
 
 @login_required
+@require_GET
+def download_application_cv(request, pk):
+    """Stream a CV only to recruiters who manage its job, or to an admin."""
+    if not is_recruiter_or_admin(request.user):
+        raise PermissionDenied
+
+    application = get_object_or_404(
+        Application.objects.select_related("job", "job__company"),
+        pk=pk,
+        job__in=jobs_managed_by(request.user),
+    )
+    if not application.cv:
+        raise Http404
+
+    try:
+        application.cv.open("rb")
+    except (FileNotFoundError, OSError, ValueError):
+        raise Http404 from None
+
+    filename = Path(application.cv.name).name or "cv.pdf"
+    response = FileResponse(
+        application.cv,
+        as_attachment=True,
+        filename=filename,
+        content_type="application/pdf",
+    )
+    response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
+
+
+@login_required
 @require_POST
 def update_application_status(request, pk):
     """Cập nhật trạng thái bằng POST nếu Recruiter sở hữu job tương ứng."""
-    if request.user.role != User.Role.RECRUITER:
+    if not is_recruiter_or_admin(request.user):
         raise PermissionDenied
 
     application = get_object_or_404(

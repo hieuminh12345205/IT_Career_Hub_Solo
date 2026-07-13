@@ -21,8 +21,11 @@
                 <tbody>
                     {% for application in applications %}
                         <tr>
-                            <td>{{ application.candidate.username }}</td>
-                            <td><a href="{{ application.cv.url }}" target="_blank">Xem CV</a></td>
+                            <td>
+                                {{ application.candidate.get_full_name|default:application.candidate.username }}
+                                <div class="text-muted small">{{ application.candidate.email }}</div>
+                            </td>
+                            <td><a href="{% url 'applications:download_cv' application.pk %}">Tải CV</a></td>
                             <td>{{ application.applied_at|date:"d/m/Y" }}</td>
                             <td>
                                 <form method="post" action="{% url 'applications:update_status' application.pk %}" class="d-flex gap-2">

@@ -9,33 +9,76 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('companies', '0001_initial'),
+        ("companies", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Skill',
+            name="Skill",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100, unique=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=100, unique=True)),
             ],
         ),
         migrations.CreateModel(
-            name='Job',
+            name="Job",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('title', models.CharField(max_length=255)),
-                ('description', models.TextField()),
-                ('requirement', models.TextField()),
-                ('salary_min', models.IntegerField(blank=True, null=True)),
-                ('salary_max', models.IntegerField(blank=True, null=True)),
-                ('location', models.CharField(max_length=255)),
-                ('job_type', models.CharField(choices=[('full_time', 'Full Time'), ('part_time', 'Part Time'), ('intern', 'Intern')], max_length=20)),
-                ('experience_level', models.CharField(choices=[('intern', 'Intern'), ('junior', 'Junior'), ('middle', 'Middle'), ('senior', 'Senior')], max_length=20)),
-                ('is_active', models.BooleanField(default=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('company', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='companies.company')),
-                ('skills', models.ManyToManyField(to='jobs.skill')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("title", models.CharField(max_length=255)),
+                ("description", models.TextField()),
+                ("requirement", models.TextField()),
+                ("salary_min", models.IntegerField(blank=True, null=True)),
+                ("salary_max", models.IntegerField(blank=True, null=True)),
+                ("location", models.CharField(max_length=255)),
+                (
+                    "job_type",
+                    models.CharField(
+                        choices=[
+                            ("full_time", "Full Time"),
+                            ("part_time", "Part Time"),
+                            ("intern", "Intern"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "experience_level",
+                    models.CharField(
+                        choices=[
+                            ("intern", "Intern"),
+                            ("junior", "Junior"),
+                            ("middle", "Middle"),
+                            ("senior", "Senior"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                ("is_active", models.BooleanField(default=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "company",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="companies.company",
+                    ),
+                ),
+                ("skills", models.ManyToManyField(to="jobs.skill")),
             ],
         ),
     ]

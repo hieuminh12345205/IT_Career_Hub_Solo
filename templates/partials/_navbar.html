@@ -1,14 +1,14 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
     <div class="container">
-        <a class="navbar-brand fw-bold" href="/">
+        <a class="navbar-brand fw-bold" href="{% url 'core:home' %}">
             <i class="bi bi-briefcase-fill me-1"></i>
             IT Career Hub
         </a>
 
-        <button 
-            class="navbar-toggler" 
-            type="button" 
-            data-bs-toggle="collapse" 
+        <button
+            class="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
             data-bs-target="#mainNavbar"
             aria-controls="mainNavbar"
             aria-expanded="false"
@@ -20,17 +20,14 @@
         <div class="collapse navbar-collapse" id="mainNavbar">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li class="nav-item">
-                    <a class="nav-link active" href="/">Trang chủ</a>
+                    <a class="nav-link" href="{% url 'core:home' %}">Trang chủ</a>
                 </li>
-
                 <li class="nav-item">
-                    <a class="nav-link" href="#">Tìm việc</a>
+                    <a class="nav-link" href="{% url 'jobs:list' %}">Tìm việc</a>
                 </li>
-
                 <li class="nav-item">
-                    <a class="nav-link" href="#">Công ty</a>
+                    <a class="nav-link" href="{% url 'companies:list' %}">Công ty</a>
                 </li>
-
                 {% if user.is_authenticated and user.role == "candidate" %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'applications:my_applications' %}">Đơn ứng tuyển</a>
@@ -38,17 +35,36 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'applications:my_bookmarks' %}">Việc đã lưu</a>
                     </li>
+                {% elif user.is_authenticated and user.role == "recruiter" %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'jobs:dashboard' %}">Thống kê</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'jobs:manage' %}">Tin của tôi</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'jobs:create' %}">Đăng tin</a>
+                    </li>
                 {% endif %}
             </ul>
 
-            <div class="d-flex gap-2">
-                <a href="#" class="btn btn-outline-light btn-sm">
-                    Đăng nhập
-                </a>
-
-                <a href="#" class="btn btn-light btn-sm">
-                    Đăng ký
-                </a>
+            <div class="d-flex gap-2 align-items-center">
+                {% if user.is_authenticated %}
+                    <a href="{% url 'users:profile' %}" class="btn btn-outline-light btn-sm">
+                        {{ user.username }}
+                    </a>
+                    <form method="post" action="{% url 'users:logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-light btn-sm">Đăng xuất</button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'users:login' %}" class="btn btn-outline-light btn-sm">
+                        Đăng nhập
+                    </a>
+                    <a href="{% url 'users:signup' %}" class="btn btn-light btn-sm">
+                        Đăng ký
+                    </a>
+                {% endif %}
             </div>
         </div>
     </div>

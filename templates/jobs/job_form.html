@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Tin tuyển dụng{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <h1 class="h3 mb-4">Tin tuyển dụng</h1>
+            <form method="post" class="card card-body shadow-sm border-0">
+                {% csrf_token %}
+                {{ form|crispy }}
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Lưu tin</button>
+                    <a href="{% url 'jobs:manage' %}" class="btn btn-outline-secondary">Hủy</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

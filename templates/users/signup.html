@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Đăng ký{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="text-center mb-4">
+        <h1 class="h2">Chọn loại tài khoản</h1>
+        <p class="text-muted">IT Career Hub hỗ trợ hai luồng riêng cho ứng viên và nhà tuyển dụng.</p>
+    </div>
+    <div class="row g-4 justify-content-center">
+        <div class="col-md-5">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body p-4">
+                    <h2 class="h4">Candidate</h2>
+                    <p class="text-muted">Tìm việc, lưu việc, upload CV và theo dõi đơn ứng tuyển.</p>
+                    <a href="{% url 'users:candidate_signup' %}" class="btn btn-primary">Đăng ký Candidate</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-5">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body p-4">
+                    <h2 class="h4">Recruiter</h2>
+                    <p class="text-muted">Quản lý công ty, đăng tin tuyển dụng và xét duyệt ứng viên.</p>
+                    <a href="{% url 'users:recruiter_signup' %}" class="btn btn-outline-primary">Đăng ký Recruiter</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

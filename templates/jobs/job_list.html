@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Tìm việc IT{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="h2 mb-1">Tìm việc IT</h1>
+            <p class="text-muted mb-0">Khám phá các vị trí đang tuyển trên IT Career Hub.</p>
+        </div>
+    </div>
+
+    <form method="get" class="card card-body shadow-sm border-0 mb-4">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-6 col-xl-4">{{ filter_form.q|as_crispy_field }}</div>
+            <div class="col-md-6 col-xl-2">{{ filter_form.location|as_crispy_field }}</div>
+            <div class="col-md-6 col-xl-2">{{ filter_form.skill|as_crispy_field }}</div>
+            <div class="col-md-6 col-xl-2">{{ filter_form.job_type|as_crispy_field }}</div>
+            <div class="col-md-6 col-xl-2">{{ filter_form.experience_level|as_crispy_field }}</div>
+            <div class="col-md-6 col-xl-3">{{ filter_form.salary_min|as_crispy_field }}</div>
+            <div class="col-md-6 col-xl-3">{{ filter_form.salary_max|as_crispy_field }}</div>
+            <div class="col-md-3 col-xl-2">
+                <button class="btn btn-primary w-100" type="submit">Áp dụng bộ lọc</button>
+            </div>
+            <div class="col-md-3 col-xl-2">
+                <a class="btn btn-outline-secondary w-100" href="{% url 'jobs:list' %}">Xóa bộ lọc</a>
+            </div>
+        </div>
+    </form>
+
+    <div class="row g-4">
+        {% for job in jobs %}
+            <div class="col-md-6 col-xl-4">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body">
+                        <h2 class="h5"><a href="{% url 'jobs:detail' job.pk %}" class="text-decoration-none">{{ job.title }}</a></h2>
+                        <p class="text-muted mb-2">{{ job.company.name }}</p>
+                        <div class="mb-3">
+                            {% for skill in job.skills.all %}
+                                <span class="skill-tag">{{ skill.name }}</span>
+                            {% empty %}
+                                <span class="text-muted small">Chưa gắn kỹ năng</span>
+                            {% endfor %}
+                        </div>
+                        <p class="small text-muted mb-1"><i class="bi bi-geo-alt"></i> {{ job.location }}</p>
+                        <p class="small text-muted mb-0"><i class="bi bi-cash"></i> {{ job.salary_display }}</p>
+                    </div>
+                    <div class="card-footer bg-white border-0 pt-0">
+                        <a href="{% url 'jobs:detail' job.pk %}" class="btn btn-outline-primary btn-sm">Xem chi tiết</a>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="col-12"><p class="text-muted">Chưa có công việc phù hợp.</p></div>
+        {% endfor %}
+    </div>
+
+    {% if is_paginated %}
+        <nav class="mt-4" aria-label="Phân trang việc làm">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Trước</a></li>{% endif %}
+                <li class="page-item active"><span class="page-link">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span></li>
+                {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?{% if query_string %}{{ query_string }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Sau</a></li>{% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+</div>
+{% endblock %}

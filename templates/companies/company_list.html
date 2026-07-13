@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Công ty{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="h2 mb-4">Công ty tuyển dụng</h1>
+    <div class="row g-4">
+        {% for company in companies %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body">
+                        <h2 class="h5"><a href="{% url 'companies:detail' company.pk %}">{{ company.name }}</a></h2>
+                        <p class="text-muted mb-2"><i class="bi bi-geo-alt"></i> {{ company.location }}</p>
+                        <p>{{ company.description|truncatewords:24 }}</p>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="col-12"><p class="text-muted">Chưa có công ty nào.</p></div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

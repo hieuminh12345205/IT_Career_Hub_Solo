@@ -20,10 +20,10 @@
                 <tbody>
                     {% for application in applications %}
                         <tr>
-                            <td>{{ application.job.title }}</td>
+                            <td><a href="{% url 'jobs:detail' application.job.pk %}">{{ application.job.title }}</a></td>
                             <td>{{ application.job.company.name }}</td>
                             <td>{{ application.applied_at|date:"d/m/Y" }}</td>
-                            <td>{{ application.get_status_display }}</td>
+                            <td><span class="badge text-bg-secondary">{{ application.get_status_display }}</span></td>
                         </tr>
                     {% endfor %}
                 </tbody>
