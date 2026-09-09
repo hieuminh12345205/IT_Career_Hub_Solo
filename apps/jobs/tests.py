@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.urls import reverse
 
@@ -8,6 +9,7 @@ from apps.users.models import User
 
 from .forms import JobFilterForm, JobForm
 from .models import Job, Skill
+from .services import companies_managed_by, jobs_managed_by
 
 
 class JobTestMixin:
@@ -43,14 +45,22 @@ class JobValidationTests(JobTestMixin, TestCase):
             location="Hà Nội",
         )
 
+    def build_job(self, title, **kwargs):
+        """Dựng Job chưa lưu để kiểm tra riêng phần validate ở tầng Python."""
+        defaults = {
+            "description": "Mô tả",
+            "requirement": "Yêu cầu",
+            "location": "Hà Nội",
+            "job_type": Job.JobType.FULL_TIME,
+            "experience_level": Job.ExperienceLevel.JUNIOR,
+            "is_active": True,
+        }
+        defaults.update(kwargs)
+        return Job(company=self.company, title=title, **defaults)
+
     def test_model_rejects_negative_and_reversed_salary_ranges(self):
-        negative_job = self.create_job(
-            self.company,
-            "Negative",
-            salary_min=-1,
-        )
-        reversed_job = self.create_job(
-            self.company,
+        negative_job = self.build_job("Negative", salary_min=-1)
+        reversed_job = self.build_job(
             "Reversed",
             salary_min=30_000_000,
             salary_max=20_000_000,
@@ -60,6 +70,21 @@ class JobValidationTests(JobTestMixin, TestCase):
             negative_job.full_clean()
         with self.assertRaises(ValidationError):
             reversed_job.full_clean()
+
+    def test_database_rejects_invalid_salary_ranges(self):
+        """CheckConstraint chặn cả khi code gọi thẳng .save(), bỏ qua clean()."""
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                self.create_job(self.company, "Negative", salary_min=-1)
+
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                self.create_job(
+                    self.company,
+                    "Reversed",
+                    salary_min=30_000_000,
+                    salary_max=20_000_000,
+                )
 
     def test_job_form_rejects_reversed_salary_range(self):
         form = JobForm(
@@ -98,6 +123,23 @@ class JobValidationTests(JobTestMixin, TestCase):
 
 
 class JobViewTests(JobTestMixin, TestCase):
+    def test_former_recruiter_loses_management_access_after_role_change(self):
+        self.assigned_recruiter.role = User.Role.CANDIDATE
+        self.assigned_recruiter.save(update_fields=["role"])
+        self.assertFalse(jobs_managed_by(self.assigned_recruiter).exists())
+        self.assertFalse(companies_managed_by(self.assigned_recruiter).exists())
+
+    def test_public_pages_render_with_real_data(self):
+        for url in (
+            reverse("core:home"),
+            reverse("companies:list"),
+            reverse("companies:detail", args=[self.company.pk]),
+            reverse("login"),
+            reverse("users:signup"),
+        ):
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 200)
+
     def setUp(self):
         self.candidate = self.create_user("candidate", User.Role.CANDIDATE)
         self.owner = self.create_user("owner", User.Role.RECRUITER)

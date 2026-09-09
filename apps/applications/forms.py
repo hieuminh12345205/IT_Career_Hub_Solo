@@ -1,8 +1,8 @@
 from django import forms
 
-from .models import Application
+from apps.core.validators import validate_pdf_upload
 
-MAX_CV_SIZE = 5 * 1024 * 1024
+from .models import Application
 
 
 class ApplicationForm(forms.ModelForm):
@@ -13,6 +13,7 @@ class ApplicationForm(forms.ModelForm):
         fields = ("cover_letter", "cv")
         widgets = {
             "cover_letter": forms.Textarea(attrs={"rows": 5}),
+            "cv": forms.FileInput(attrs={"accept": ".pdf,application/pdf"}),
         }
 
     def __init__(self, *args, candidate=None, job=None, **kwargs):
@@ -23,22 +24,7 @@ class ApplicationForm(forms.ModelForm):
 
     def clean_cv(self):
         """Chỉ nhận file PDF có kích thước tối đa 5MB."""
-        cv = self.cleaned_data["cv"]
-
-        if cv.size > MAX_CV_SIZE:
-            raise forms.ValidationError("CV không được lớn hơn 5MB.")
-
-        content_type = getattr(cv, "content_type", None)
-
-        # MIME có thể bị giả mạo, nên kiểm tra thêm chữ ký ở đầu file PDF.
-        cv.seek(0)
-        header = cv.read(5)
-        cv.seek(0)
-
-        if content_type != "application/pdf" or header != b"%PDF-":
-            raise forms.ValidationError("CV phải là file PDF hợp lệ.")
-
-        return cv
+        return validate_pdf_upload(self.cleaned_data["cv"])
 
     def clean(self):
         """Không cho ứng tuyển job đã đóng hoặc ứng tuyển cùng job hai lần."""

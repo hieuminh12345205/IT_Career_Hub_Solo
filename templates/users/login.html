@@ -9,13 +9,21 @@
         <div class="col-md-6 col-lg-5">
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <h1 class="h3 mb-3">Đăng nhập</h1>
-                    <form method="post">
+                    <div class="text-center mb-4">
+                        <div class="feature-icon mb-3"><i class="bi bi-box-arrow-in-right"></i></div>
+                        <h1 class="h3 mb-1">Đăng nhập</h1>
+                        <p class="text-muted mb-0">Tiếp tục hành trình nghề nghiệp của bạn.</p>
+                    </div>
+
+                    <form method="post" novalidate>
                         {% csrf_token %}
                         {{ form|crispy }}
                         <button type="submit" class="btn btn-primary w-100">Đăng nhập</button>
                     </form>
-                    <p class="text-muted mt-3 mb-0">
+
+                    <hr class="my-4">
+
+                    <p class="text-muted text-center mb-0">
                         Chưa có tài khoản? <a href="{% url 'users:signup' %}">Đăng ký ngay</a>.
                     </p>
                 </div>

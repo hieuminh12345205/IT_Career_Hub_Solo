@@ -7,12 +7,31 @@
     <div class="row justify-content-center">
         <div class="col-lg-6">
             <div class="card card-body shadow-sm border-0">
-                <h1 class="h4">Xóa tin tuyển dụng</h1>
-                <p>Bạn có chắc muốn xóa tin <strong>{{ object.title }}</strong>?</p>
+                <h1 class="h4 text-danger mb-3">
+                    <i class="bi bi-exclamation-triangle me-1"></i>Xóa tin tuyển dụng
+                </h1>
+
+                <p class="mb-2">Bạn có chắc muốn xóa tin <strong>{{ object.title }}</strong>?</p>
+                <p class="text-muted small mb-3">
+                    {{ object.company.name }}
+                    <span class="mx-1">·</span>{{ object.location }}
+                    <span class="mx-1">·</span>Đăng ngày {{ object.created_at|date:"d/m/Y" }}
+                </p>
+
+                <div class="alert alert-warning" role="alert">
+                    Thao tác này không thể hoàn tác và sẽ xóa cả các đơn ứng tuyển đã nhận
+                    cho tin này. Nếu chỉ muốn ngừng nhận hồ sơ, hãy sửa tin và bỏ chọn
+                    <em>Đang tuyển</em>.
+                </div>
+
                 <form method="post">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-danger">Xóa</button>
-                    <a href="{% url 'jobs:manage' %}" class="btn btn-outline-secondary">Hủy</a>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash me-1"></i>Xóa tin
+                        </button>
+                        <a href="{% url 'jobs:manage' %}" class="btn btn-outline-secondary">Hủy</a>
+                    </div>
                 </form>
             </div>
         </div>

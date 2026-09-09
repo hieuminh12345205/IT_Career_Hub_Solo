@@ -2,7 +2,6 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
-from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views.generic import (
     CreateView,

@@ -1,4 +1,5 @@
 from decouple import Csv, config
+from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa: F403
 
@@ -8,6 +9,11 @@ DEBUG = False
 # intentionally no insecure fallbacks for these two values.
 SECRET_KEY = config("SECRET_KEY")
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", cast=Csv())
+
+if SECRET_KEY.startswith("django-insecure-") or len(SECRET_KEY) < 50:
+    raise ImproperlyConfigured("Production requires a strong, unique SECRET_KEY.")
+if not ALLOWED_HOSTS or "*" in ALLOWED_HOSTS:
+    raise ImproperlyConfigured("Production requires explicit ALLOWED_HOSTS.")
 
 SECURE_SSL_REDIRECT = config("SECURE_SSL_REDIRECT", default=True, cast=bool)
 SESSION_COOKIE_SECURE = config("SESSION_COOKIE_SECURE", default=True, cast=bool)

@@ -3,6 +3,8 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import FileExtensionValidator
 from django.db import models
 
+from apps.core.validators import validate_pdf_upload
+
 
 class User(AbstractUser):
 
@@ -54,7 +56,10 @@ class CandidateProfile(models.Model):
         upload_to="cvs/",
         blank=True,
         null=True,
-        validators=[FileExtensionValidator(allowed_extensions=["pdf"])],
+        validators=[
+            FileExtensionValidator(allowed_extensions=["pdf"]),
+            validate_pdf_upload,
+        ],
     )
     location = models.CharField(max_length=100, blank=True)
     updated_at = models.DateTimeField(auto_now=True)

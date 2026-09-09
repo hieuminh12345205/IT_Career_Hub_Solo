@@ -1,3 +1,8 @@
 [flake8]
-exclude = .git,.venv,venv,__pycache__,*/migrations/*
-select = E9,F63,F7,F82
+exclude = .git,.venv,venv,__pycache__,*/migrations/*,node_modules
+max-line-length = 88
+# E203 và W503 xung đột với cách black xuống dòng, nên tắt hẳn.
+extend-ignore = E203,W503
+max-complexity = 12
+per-file-ignores =
+    config/settings/*.py:F401,F403,F405

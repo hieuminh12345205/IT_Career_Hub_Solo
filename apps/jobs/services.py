@@ -18,9 +18,14 @@ def is_recruiter_or_admin(user):
 
 
 def jobs_managed_by(recruiter):
-    """Jobs owned directly, assigned through RecruiterProfile.company, or all jobs for admin."""
+    """Tin do recruiter sở hữu hoặc được gán qua RecruiterProfile.company.
+
+    Admin thấy toàn bộ tin.
+    """
     if is_admin(recruiter):
         return Job.objects.all()
+    if not is_recruiter_or_admin(recruiter):
+        return Job.objects.none()
     return Job.objects.filter(
         Q(company__recruiter=recruiter) | Q(company__recruiter_profiles__user=recruiter)
     ).distinct()
@@ -31,6 +36,8 @@ def companies_managed_by(recruiter):
 
     if is_admin(recruiter):
         return Company.objects.all()
+    if not is_recruiter_or_admin(recruiter):
+        return Company.objects.none()
     return Company.objects.filter(
         Q(recruiter=recruiter) | Q(recruiter_profiles__user=recruiter)
     ).distinct()

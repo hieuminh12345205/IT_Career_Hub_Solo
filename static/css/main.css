@@ -1,17 +1,45 @@
+/* ==========================================================================
+   IT Career Hub - stylesheet chính
+   Bootstrap 5.3 lo phần layout/utility; file này chỉ định nghĩa bảng màu
+   thương hiệu và các component dùng lại nhiều lần (job-card, empty-state,
+   metric-card, avatar, logo công ty...).
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Design tokens
+   -------------------------------------------------------------------------- */
 :root {
     --primary: #1F3864;
     --primary-light: #2E5597;
+    --primary-dark: #16294A;
+    --primary-soft: #EEF2F9;
     --accent: #FF6F00;
+    --accent-dark: #E56300;
     --success: #2E7D32;
     --danger: #C7254E;
     --bg-light: #F6F8FA;
+    --surface: #FFFFFF;
     --text-dark: #1F1F1F;
     --text-muted: #6C757D;
     --border: #DEE2E6;
     --white: #FFFFFF;
+
+    --radius-sm: 8px;
     --radius: 12px;
-    --shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-    --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.06);
+    --radius-lg: 20px;
+    --shadow-sm: 0 4px 12px rgba(16, 30, 54, 0.06);
+    --shadow: 0 8px 24px rgba(16, 30, 54, 0.08);
+    --shadow-lg: 0 16px 40px rgba(16, 30, 54, 0.14);
+    --transition: 0.18s ease;
+
+    /* Ghi đè biến Bootstrap để component gốc cũng theo màu thương hiệu. */
+    --bs-primary: #1F3864;
+    --bs-primary-rgb: 31, 56, 100;
+    --bs-link-color: #1F3864;
+    --bs-link-color-rgb: 31, 56, 100;
+    --bs-link-hover-color: #2E5597;
+    --bs-body-color: #1F1F1F;
+    --bs-border-radius: 12px;
 }
 
 * {
@@ -19,12 +47,53 @@
 }
 
 body {
-    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     color: var(--text-dark);
     background-color: var(--bg-light);
     line-height: 1.6;
 }
 
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+a {
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+}
+
+/* Viền focus rõ ràng cho người dùng điều hướng bằng bàn phím. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.btn:focus-visible {
+    outline: 3px solid rgba(31, 56, 100, 0.45);
+    outline-offset: 2px;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 0.2rem rgba(31, 56, 100, 0.15);
+}
+
+/* Tôn trọng lựa chọn giảm chuyển động của hệ điều hành. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   2. Override màu Bootstrap
+   -------------------------------------------------------------------------- */
 .bg-primary {
     background-color: var(--primary) !important;
 }
@@ -34,23 +103,281 @@ body {
 }
 
 .btn-primary {
-    background-color: var(--primary);
-    border-color: var(--primary);
+    --bs-btn-bg: var(--primary);
+    --bs-btn-border-color: var(--primary);
+    --bs-btn-hover-bg: var(--primary-light);
+    --bs-btn-hover-border-color: var(--primary-light);
+    --bs-btn-active-bg: var(--primary-dark);
+    --bs-btn-active-border-color: var(--primary-dark);
+    --bs-btn-disabled-bg: var(--primary);
+    --bs-btn-disabled-border-color: var(--primary);
 }
 
-.btn-primary:hover {
-    background-color: var(--primary-light);
-    border-color: var(--primary-light);
+.btn-outline-primary {
+    --bs-btn-color: var(--primary);
+    --bs-btn-border-color: var(--primary);
+    --bs-btn-hover-bg: var(--primary);
+    --bs-btn-hover-border-color: var(--primary);
+    --bs-btn-active-bg: var(--primary-dark);
+    --bs-btn-active-border-color: var(--primary-dark);
 }
 
-.navbar {
-    box-shadow: var(--shadow-sm);
+/* Nút nhấn mạnh dùng cho CTA chính trên nền tối (hero). */
+.btn-accent {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: var(--accent);
+    --bs-btn-border-color: var(--accent);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--accent-dark);
+    --bs-btn-hover-border-color: var(--accent-dark);
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: var(--accent-dark);
+    --bs-btn-active-border-color: var(--accent-dark);
+    font-weight: 600;
+}
+
+.btn {
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+}
+
+.card {
+    border-radius: var(--radius);
+}
+
+/* --------------------------------------------------------------------------
+   3. Layout dùng chung
+   -------------------------------------------------------------------------- */
+.skip-link {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 1080;
+    padding: 0.5rem 1rem;
+    background: var(--primary);
+    color: var(--white);
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+}
+
+/* Cho phép text-truncate hoạt động bên trong flex container. */
+.min-w-0 {
+    min-width: 0;
 }
 
 .min-vh-75 {
     min-height: 75vh;
 }
 
+.hover-lift {
+    transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.hover-lift:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow) !important;
+}
+
+.navbar {
+    box-shadow: var(--shadow-sm);
+}
+
+.navbar .nav-link.active {
+    font-weight: 600;
+    color: var(--white) !important;
+}
+
+.footer {
+    background: var(--surface);
+    color: var(--text-dark);
+}
+
+.footer-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    line-height: 1.9;
+}
+
+.footer-link:hover {
+    color: var(--primary);
+    text-decoration: underline;
+}
+
+/* --------------------------------------------------------------------------
+   4. Avatar & logo công ty
+   -------------------------------------------------------------------------- */
+.avatar,
+.avatar-sm {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+}
+
+.avatar-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    color: var(--white);
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.company-logo,
+.company-logo-lg {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-sm);
+    object-fit: contain;
+    background: var(--white);
+    border: 1px solid var(--border);
+    padding: 4px;
+    flex-shrink: 0;
+}
+
+.company-logo-lg {
+    width: 88px;
+    height: 88px;
+}
+
+.company-logo-placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-size: 1.5rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.company-logo-lg.company-logo-placeholder {
+    font-size: 2.25rem;
+}
+
+/* Chip công ty trên trang chủ. */
+.company-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color var(--transition), box-shadow var(--transition),
+        transform var(--transition);
+}
+
+.company-chip:hover {
+    border-color: var(--primary-light);
+    box-shadow: var(--shadow-sm);
+    transform: translateY(-2px);
+    color: inherit;
+}
+
+/* --------------------------------------------------------------------------
+   5. Job card & tag kỹ năng
+   -------------------------------------------------------------------------- */
+.job-card {
+    position: relative;
+    height: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    transition: border-color var(--transition), box-shadow var(--transition),
+        transform var(--transition);
+}
+
+.job-card:hover {
+    border-color: var(--primary-light);
+    box-shadow: var(--shadow);
+    transform: translateY(-3px);
+}
+
+.job-preview-card {
+    background: var(--white);
+    color: var(--text-dark);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    box-shadow: var(--shadow);
+}
+
+.skill-tag {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    background: #E3F2FD;
+    color: #1565C0;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin: 0.15rem 0.15rem 0.15rem 0;
+    white-space: nowrap;
+}
+
+.text-salary {
+    color: var(--success);
+    font-weight: 600;
+}
+
+/* Danh sách thông tin nhanh ở trang chi tiết việc làm. */
+.job-facts {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.job-facts li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px dashed var(--border);
+}
+
+.job-facts li:last-child {
+    border-bottom: 0;
+}
+
+.job-facts i {
+    color: var(--primary);
+    margin-top: 0.2rem;
+}
+
+/* --------------------------------------------------------------------------
+   6. Bộ lọc & sidebar
+   -------------------------------------------------------------------------- */
+.filter-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+}
+
+.sticky-sidebar {
+    position: sticky;
+    top: 88px;
+}
+
+@media (max-width: 991.98px) {
+    .sticky-sidebar {
+        position: static;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   7. Hero & trang chủ
+   -------------------------------------------------------------------------- */
 .hero-section {
     background: linear-gradient(135deg, var(--primary), var(--primary-light));
     color: var(--white);
@@ -73,20 +400,44 @@ body {
 .hero-card {
     background: rgba(255, 255, 255, 0.12);
     padding: 1.5rem;
-    border-radius: 24px;
+    border-radius: var(--radius-lg);
     backdrop-filter: blur(10px);
 }
 
-.job-preview-card {
+.hero-search {
     background: var(--white);
-    color: var(--text-dark);
     border-radius: var(--radius);
-    padding: 1.25rem;
+    padding: 0.5rem;
+    box-shadow: var(--shadow-lg);
+}
+
+.hero-search .form-control,
+.hero-search .form-select {
+    border: 0;
+    box-shadow: none;
+}
+
+/* Dải số liệu nằm vắt qua ranh giới hero. */
+.stats-strip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow);
+    padding: 1.5rem 1rem;
+    margin-top: -2.5rem;
+    position: relative;
+    z-index: 2;
+}
+
+.stats-strip .stat-value {
+    font-size: 1.9rem;
+    font-weight: 800;
+    color: var(--primary);
+    line-height: 1.1;
 }
 
 .section-padding {
-    padding: 80px 0;
+    padding: 72px 0;
 }
 
 .section-title {
@@ -101,15 +452,19 @@ body {
     margin: 0 auto;
 }
 
+.bg-light-custom {
+    background: #EEF3F8;
+}
+
 .feature-card {
-    background: var(--white);
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 2rem;
     height: 100%;
     text-align: center;
     box-shadow: var(--shadow-sm);
-    transition: all 0.2s ease;
+    transition: transform var(--transition), box-shadow var(--transition);
 }
 
 .feature-card:hover {
@@ -122,7 +477,7 @@ body {
     height: 64px;
     margin: 0 auto 1rem;
     border-radius: 50%;
-    background: rgba(31, 56, 100, 0.1);
+    background: var(--primary-soft);
     color: var(--primary);
     display: flex;
     align-items: center;
@@ -130,6 +485,7 @@ body {
     font-size: 1.7rem;
 }
 
+.feature-card h3,
 .feature-card h5 {
     font-weight: 700;
     margin-bottom: 0.75rem;
@@ -140,12 +496,8 @@ body {
     margin-bottom: 0;
 }
 
-.bg-light-custom {
-    background: #EEF3F8;
-}
-
 .stat-box {
-    background: var(--white);
+    background: var(--surface);
     border-radius: var(--radius);
     padding: 1.5rem;
     box-shadow: var(--shadow-sm);
@@ -162,21 +514,120 @@ body {
     margin-bottom: 0;
 }
 
-.skill-tag {
-    display: inline-block;
-    padding: 0.25rem 0.6rem;
-    background: #E3F2FD;
-    color: #1565C0;
-    border-radius: 999px;
-    font-size: 0.85rem;
-    margin: 0.15rem 0.15rem 0.15rem 0;
+/* --------------------------------------------------------------------------
+   8. Dashboard nhà tuyển dụng
+   -------------------------------------------------------------------------- */
+.metric-card {
+    position: relative;
+    overflow: hidden;
+    border-left: 4px solid var(--primary);
 }
 
-.footer {
+.metric-card .metric-icon {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 1.25rem;
+    background: var(--primary-soft);
+    color: var(--primary);
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1.1;
     color: var(--text-dark);
 }
 
-@media (max-width: 991px) {
+.metric-primary {
+    border-left-color: var(--primary);
+}
+
+.metric-info {
+    border-left-color: #0DCAF0;
+}
+
+.metric-info .metric-icon {
+    background: rgba(13, 202, 240, 0.14);
+    color: #0A8FAC;
+}
+
+.metric-warning {
+    border-left-color: #FFC107;
+}
+
+.metric-warning .metric-icon {
+    background: rgba(255, 193, 7, 0.16);
+    color: #99760A;
+}
+
+.metric-success {
+    border-left-color: var(--success);
+}
+
+.metric-success .metric-icon {
+    background: rgba(46, 125, 50, 0.14);
+    color: var(--success);
+}
+
+.status-bar {
+    height: 14px;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.legend-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+}
+
+/* --------------------------------------------------------------------------
+   9. Trạng thái rỗng & trang lỗi
+   -------------------------------------------------------------------------- */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: var(--text-muted);
+    background: var(--surface);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+}
+
+.empty-state i {
+    display: block;
+    font-size: 2.5rem;
+    color: var(--border);
+    margin-bottom: 0.75rem;
+}
+
+.error-page {
+    text-align: center;
+    max-width: 40rem;
+    margin: 0 auto;
+    padding: 3rem 1rem;
+}
+
+.error-code {
+    font-size: 5rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--primary);
+}
+
+/* --------------------------------------------------------------------------
+   10. Responsive
+   -------------------------------------------------------------------------- */
+@media (max-width: 991.98px) {
     .hero-title {
         font-size: 2.4rem;
     }
@@ -184,9 +635,13 @@ body {
     .hero-section {
         padding: 60px 0;
     }
+
+    .stats-strip {
+        margin-top: -1.5rem;
+    }
 }
 
-@media (max-width: 576px) {
+@media (max-width: 575.98px) {
     .hero-title {
         font-size: 2rem;
     }
@@ -196,10 +651,19 @@ body {
     }
 
     .section-padding {
-        padding: 56px 0;
+        padding: 48px 0;
     }
 
     .feature-card {
         padding: 1.5rem;
+    }
+
+    .stats-strip {
+        margin-top: 0;
+        border-radius: var(--radius);
+    }
+
+    .error-code {
+        font-size: 3.5rem;
     }
 }

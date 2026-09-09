@@ -1,6 +1,8 @@
-from django.core.management.base import BaseCommand
+from django.conf import settings
+from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
 
-from apps.applications.models import Application, Bookmark
+from apps.applications.models import Bookmark
 from apps.companies.models import Company
 from apps.jobs.models import Job, Skill
 from apps.users.models import CandidateProfile, RecruiterProfile, User
@@ -9,7 +11,12 @@ from apps.users.models import CandidateProfile, RecruiterProfile, User
 class Command(BaseCommand):
     help = "Tạo dữ liệu mẫu để chạy thử luồng tuyển dụng"
 
+    @transaction.atomic
     def handle(self, *args, **options):
+        if not settings.ALLOW_DEMO_SEED:
+            raise CommandError(
+                "seed_data chỉ được phép chạy trong môi trường dev/test."
+            )
         recruiter = self._upsert_user(
             username="demo_recruiter",
             email="recruiter@example.com",
@@ -34,7 +41,7 @@ class Command(BaseCommand):
             is_superuser=True,
         )
 
-        company, _ = Company.objects.update_or_create(
+        company, _ = Company.objects.get_or_create(
             recruiter=recruiter,
             defaults={
                 "name": "Demo Tech",
@@ -43,11 +50,11 @@ class Command(BaseCommand):
                 "location": "Hà Nội",
             },
         )
-        RecruiterProfile.objects.update_or_create(
-            user=recruiter,
-            defaults={"company": company, "position": "HR Manager"},
-        )
-        CandidateProfile.objects.update_or_create(
+        recruiter_profile, _ = RecruiterProfile.objects.get_or_create(user=recruiter)
+        if recruiter_profile.company_id is None:
+            recruiter_profile.company = company
+            recruiter_profile.save(update_fields=["company", "updated_at"])
+        CandidateProfile.objects.get_or_create(
             user=candidate,
             defaults={
                 "full_name": "Demo Candidate",
@@ -60,20 +67,22 @@ class Command(BaseCommand):
         python_skill, _ = Skill.objects.get_or_create(name="Python")
         django_skill, _ = Skill.objects.get_or_create(name="Django")
 
-        backend_job = self._upsert_job(
+        backend_job, backend_created = self._upsert_job(
             company=company,
             title="Python Backend Developer",
             experience_level=Job.ExperienceLevel.JUNIOR,
         )
-        backend_job.skills.set([python_skill, django_skill])
+        if backend_created:
+            backend_job.skills.set([python_skill, django_skill])
 
-        intern_job = self._upsert_job(
+        intern_job, intern_created = self._upsert_job(
             company=company,
             title="Django Intern",
             experience_level=Job.ExperienceLevel.INTERN,
             job_type=Job.JobType.INTERN,
         )
-        intern_job.skills.set([python_skill, django_skill])
+        if intern_created:
+            intern_job.skills.set([python_skill, django_skill])
 
         Bookmark.objects.get_or_create(candidate=candidate, job=intern_job)
 
@@ -81,7 +90,8 @@ class Command(BaseCommand):
             self.style.SUCCESS(
                 "Đã tạo dữ liệu mẫu. Đăng nhập bằng demo_candidate hoặc "
                 "demo_recruiter với mật khẩu Demo@12345. Admin: demo_admin "
-                "với mật khẩu Demo@12345."
+                "với mật khẩu Demo@12345 (chỉ tài khoản mới). "
+                "Mật khẩu và nội dung đã chỉnh sửa được giữ nguyên."
             )
         )
 
@@ -95,18 +105,22 @@ class Command(BaseCommand):
         is_staff=False,
         is_superuser=False,
     ):
-        user, _ = User.objects.get_or_create(
+        user, created = User.objects.get_or_create(
             username=username,
-            defaults={"email": email, "role": role},
+            defaults={
+                "email": email,
+                "role": role,
+                "first_name": first_name,
+                "last_name": last_name,
+                "is_staff": is_staff,
+                "is_superuser": is_superuser,
+            },
         )
-        user.email = email
-        user.role = role
-        user.first_name = first_name
-        user.last_name = last_name
-        user.is_staff = is_staff
-        user.is_superuser = is_superuser
-        user.set_password("Demo@12345")
-        user.save()
+        if not created and user.role != role:
+            raise CommandError(f"Username {username} đã tồn tại với vai trò khác.")
+        if created:
+            user.set_password("Demo@12345")
+            user.save(update_fields=["password"])
         return user
 
     @staticmethod
@@ -116,7 +130,7 @@ class Command(BaseCommand):
         experience_level,
         job_type=Job.JobType.FULL_TIME,
     ):
-        job, _ = Job.objects.update_or_create(
+        return Job.objects.get_or_create(
             company=company,
             title=title,
             defaults={
@@ -130,4 +144,3 @@ class Command(BaseCommand):
                 "is_active": True,
             },
         )
-        return job

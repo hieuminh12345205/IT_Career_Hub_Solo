@@ -1,90 +1,193 @@
 {% extends 'base.html' %}
 
-{% block title %}Trang chủ - IT Career Hub{% endblock %}
+{% block title %}IT Career Hub - Việc làm IT{% endblock %}
 
 {% block content %}
 
 <section class="hero-section">
     <div class="container">
-        <div class="row align-items-center min-vh-75">
+        <div class="row align-items-center g-5">
             <div class="col-lg-6">
-                <span class="badge bg-light text-primary mb-3">
+                <span class="badge rounded-pill bg-light text-primary mb-3 px-3 py-2">
                     Nền tảng việc làm ngành IT
                 </span>
 
-                <h1 class="hero-title">
-                    Tìm công việc IT phù hợp với bạn
-                </h1>
+                <h1 class="hero-title">Tìm công việc IT phù hợp với bạn</h1>
 
                 <p class="hero-description">
-                    IT Career Hub giúp ứng viên tìm kiếm việc làm IT, ứng tuyển trực tuyến 
+                    IT Career Hub giúp ứng viên tìm kiếm việc làm IT, ứng tuyển trực tuyến
                     và giúp nhà tuyển dụng quản lý tin tuyển dụng dễ dàng.
                 </p>
 
-                <div class="d-flex flex-wrap gap-3 mt-4">
-                    <a href="{% url 'jobs:list' %}" class="btn btn-light btn-lg">
-                        <i class="bi bi-search me-1"></i>
-                        Tìm việc ngay
-                    </a>
+                <form method="get" action="{% url 'jobs:list' %}" class="hero-search mt-4">
+                    <div class="row g-2">
+                        <div class="col-md">
+                            <label class="visually-hidden" for="hero-q">Từ khóa</label>
+                            <input type="search" id="hero-q" name="q" class="form-control form-control-lg"
+                                   placeholder="Vị trí, công ty hoặc kỹ năng...">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="visually-hidden" for="hero-location">Địa điểm</label>
+                            <input type="text" id="hero-location" name="location" class="form-control form-control-lg"
+                                   placeholder="Địa điểm">
+                        </div>
+                        <div class="col-md-auto d-grid">
+                            <button type="submit" class="btn btn-accent btn-lg">
+                                <i class="bi bi-search me-1"></i>Tìm
+                            </button>
+                        </div>
+                    </div>
+                </form>
 
-                    <a href="{% url 'jobs:create' %}" class="btn btn-outline-light btn-lg">
-                        <i class="bi bi-building me-1"></i>
-                        Đăng tin tuyển dụng
-                    </a>
+                <div class="d-flex flex-wrap gap-3 mt-4">
+                    {% if is_recruiter_or_admin %}
+                        <a href="{% url 'jobs:create' %}" class="btn btn-light btn-lg">
+                            <i class="bi bi-plus-lg me-1"></i>Đăng tin tuyển dụng
+                        </a>
+                        <a href="{% url 'jobs:dashboard' %}" class="btn btn-outline-light btn-lg">
+                            <i class="bi bi-bar-chart me-1"></i>Xem thống kê
+                        </a>
+                    {% elif is_candidate %}
+                        <a href="{% url 'users:candidate_profile' %}" class="btn btn-light btn-lg">
+                            <i class="bi bi-file-earmark-person me-1"></i>Cập nhật hồ sơ
+                        </a>
+                        <a href="{% url 'applications:my_applications' %}" class="btn btn-outline-light btn-lg">
+                            <i class="bi bi-list-check me-1"></i>Đơn của tôi
+                        </a>
+                    {% else %}
+                        <a href="{% url 'users:candidate_signup' %}" class="btn btn-light btn-lg">
+                            <i class="bi bi-person-plus me-1"></i>Đăng ký ứng viên
+                        </a>
+                        <a href="{% url 'users:recruiter_signup' %}" class="btn btn-outline-light btn-lg">
+                            <i class="bi bi-building me-1"></i>Tôi là nhà tuyển dụng
+                        </a>
+                    {% endif %}
                 </div>
             </div>
 
-            <div class="col-lg-6 mt-5 mt-lg-0">
+            <div class="col-lg-6">
                 <div class="hero-card">
-                    <div class="job-preview-card">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <h5 class="mb-1">Frontend Developer</h5>
-                                <p class="text-muted mb-2">ABC Technology</p>
+                    {% for job in latest_jobs|slice:":2" %}
+                        <div class="job-preview-card {% if not forloop.first %}mt-3{% endif %}">
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <div class="min-w-0">
+                                    <h2 class="h5 mb-1 text-truncate">
+                                        <a href="{% url 'jobs:detail' job.pk %}" class="text-decoration-none">{{ job.title }}</a>
+                                    </h2>
+                                    <p class="text-muted mb-2 text-truncate">{{ job.company.name }}</p>
+                                </div>
+                                <span class="badge text-bg-success flex-shrink-0">Đang tuyển</span>
                             </div>
 
-                            <span class="badge bg-success">Đang tuyển</span>
-                        </div>
-
-                        <div class="mb-3">
-                            <span class="skill-tag">HTML</span>
-                            <span class="skill-tag">CSS</span>
-                            <span class="skill-tag">JavaScript</span>
-                            <span class="skill-tag">Bootstrap</span>
-                        </div>
-
-                        <div class="d-flex justify-content-between text-muted small">
-                            <span><i class="bi bi-geo-alt"></i> Hà Nội</span>
-                            <span><i class="bi bi-cash"></i> Thỏa thuận</span>
-                        </div>
-                    </div>
-
-                    <div class="job-preview-card mt-3">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <h5 class="mb-1">Django Developer</h5>
-                                <p class="text-muted mb-2">IT Career Company</p>
+                            <div class="mb-3">
+                                {% for skill in job.skills.all|slice:":4" %}
+                                    <span class="skill-tag">{{ skill.name }}</span>
+                                {% endfor %}
                             </div>
 
-                            <span class="badge bg-primary">Remote</span>
+                            <div class="d-flex justify-content-between text-muted small gap-2">
+                                <span class="text-truncate"><i class="bi bi-geo-alt me-1"></i>{{ job.location }}</span>
+                                <span class="flex-shrink-0"><i class="bi bi-cash-coin me-1"></i>{{ job.salary_display }}</span>
+                            </div>
                         </div>
-
-                        <div class="mb-3">
-                            <span class="skill-tag">Python</span>
-                            <span class="skill-tag">Django</span>
-                            <span class="skill-tag">PostgreSQL</span>
+                    {% empty %}
+                        <div class="job-preview-card text-center">
+                            <p class="mb-2 fw-semibold">Chưa có tin tuyển dụng nào</p>
+                            <p class="text-muted small mb-0">
+                                Hãy là nhà tuyển dụng đầu tiên đăng tin trên IT Career Hub.
+                            </p>
                         </div>
-
-                        <div class="d-flex justify-content-between text-muted small">
-                            <span><i class="bi bi-geo-alt"></i> TP.HCM</span>
-                            <span><i class="bi bi-cash"></i> 15 - 25 triệu</span>
-                        </div>
-                    </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
     </div>
 </section>
+
+<section class="stats-strip">
+    <div class="container">
+        <div class="row g-3 text-center">
+            <div class="col-6 col-md-3">
+                <div class="stat-box">
+                    <h3>{{ stat_open_jobs }}</h3>
+                    <p>Tin đang tuyển</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-box">
+                    <h3>{{ stat_companies }}</h3>
+                    <p>Công ty</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-box">
+                    <h3>{{ stat_skills }}</h3>
+                    <p>Kỹ năng</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-box">
+                    <h3>{{ stat_applications }}</h3>
+                    <p>Lượt ứng tuyển</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% if latest_jobs %}
+<section class="section-padding">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+            <div>
+                <h2 class="section-title mb-1">Tin tuyển dụng mới nhất</h2>
+                <p class="text-muted mb-0">Những vị trí vừa được đăng trên hệ thống.</p>
+            </div>
+            <a href="{% url 'jobs:list' %}" class="btn btn-outline-primary">
+                Xem tất cả<i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+
+        <div class="row g-4">
+            {% for job in latest_jobs %}
+                <div class="col-md-6 col-xl-4">{% include 'partials/_job_card.html' %}</div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+{% if top_companies %}
+<section class="section-padding bg-light-custom">
+    <div class="container">
+        <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+            <div>
+                <h2 class="section-title mb-1">Công ty đang tuyển</h2>
+                <p class="text-muted mb-0">Các công ty có nhiều vị trí mở nhất.</p>
+            </div>
+            <a href="{% url 'companies:list' %}" class="btn btn-outline-primary">
+                Tất cả công ty<i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+
+        <div class="row g-3">
+            {% for company in top_companies %}
+                <div class="col-6 col-md-4 col-xl-2">
+                    <a href="{% url 'companies:detail' company.pk %}" class="company-chip">
+                        {% if company.logo %}
+                            <img src="{{ company.logo.url }}" alt="{{ company.name }}" class="company-logo mb-2">
+                        {% else %}
+                            <span class="company-logo company-logo-placeholder mb-2">{{ company.name|first|upper }}</span>
+                        {% endif %}
+                        <span class="fw-semibold small d-block text-truncate w-100">{{ company.name }}</span>
+                        <span class="text-muted small">{{ company.open_job_count }} vị trí</span>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
 
 <section class="section-padding">
     <div class="container">
@@ -98,77 +201,23 @@
         <div class="row g-4">
             <div class="col-md-4">
                 <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="bi bi-search"></i>
-                    </div>
-
-                    <h5>Tìm kiếm việc làm</h5>
-
-                    <p>
-                        Ứng viên có thể xem danh sách việc làm, tìm kiếm và lọc theo nhu cầu.
-                    </p>
+                    <div class="feature-icon"><i class="bi bi-search"></i></div>
+                    <h3 class="h5">Tìm kiếm việc làm</h3>
+                    <p>Ứng viên có thể xem danh sách việc làm, tìm kiếm và lọc theo nhu cầu.</p>
                 </div>
             </div>
-
             <div class="col-md-4">
                 <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="bi bi-file-earmark-arrow-up"></i>
-                    </div>
-
-                    <h5>Ứng tuyển trực tuyến</h5>
-
-                    <p>
-                        Candidate có thể upload CV và gửi đơn ứng tuyển trực tiếp trên hệ thống.
-                    </p>
+                    <div class="feature-icon"><i class="bi bi-file-earmark-arrow-up"></i></div>
+                    <h3 class="h5">Ứng tuyển trực tuyến</h3>
+                    <p>Candidate có thể upload CV và gửi đơn ứng tuyển trực tiếp trên hệ thống.</p>
                 </div>
             </div>
-
             <div class="col-md-4">
                 <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="bi bi-kanban"></i>
-                    </div>
-
-                    <h5>Quản lý tuyển dụng</h5>
-
-                    <p>
-                        Recruiter có thể đăng tin, xem ứng viên và cập nhật trạng thái ứng tuyển.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<section class="section-padding bg-light-custom">
-    <div class="container">
-        <div class="row g-4 text-center">
-            <div class="col-md-3 col-6">
-                <div class="stat-box">
-                    <h3>50+</h3>
-                    <p>Việc làm mẫu</p>
-                </div>
-            </div>
-
-            <div class="col-md-3 col-6">
-                <div class="stat-box">
-                    <h3>10+</h3>
-                    <p>Công ty</p>
-                </div>
-            </div>
-
-            <div class="col-md-3 col-6">
-                <div class="stat-box">
-                    <h3>2</h3>
-                    <p>Vai trò người dùng</p>
-                </div>
-            </div>
-
-            <div class="col-md-3 col-6">
-                <div class="stat-box">
-                    <h3>100%</h3>
-                    <p>Django Template</p>
+                    <div class="feature-icon"><i class="bi bi-kanban"></i></div>
+                    <h3 class="h5">Quản lý tuyển dụng</h3>
+                    <p>Recruiter có thể đăng tin, xem ứng viên và cập nhật trạng thái ứng tuyển.</p>
                 </div>
             </div>
         </div>

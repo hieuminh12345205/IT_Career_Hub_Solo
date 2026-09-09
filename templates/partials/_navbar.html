@@ -1,3 +1,4 @@
+{% load static %}
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
     <div class="container">
         <a class="navbar-brand fw-bold" href="{% url 'core:home' %}">
@@ -12,7 +13,7 @@
             data-bs-target="#mainNavbar"
             aria-controls="mainNavbar"
             aria-expanded="false"
-            aria-label="Toggle navigation"
+            aria-label="Mở menu"
         >
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -20,27 +21,35 @@
         <div class="collapse navbar-collapse" id="mainNavbar">
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li class="nav-item">
-                    <a class="nav-link" href="{% url 'core:home' %}">Trang chủ</a>
+                    <a class="nav-link {% if request.resolver_match.view_name == 'core:home' %}active{% endif %}" href="{% url 'core:home' %}">Trang chủ</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{% url 'jobs:list' %}">Tìm việc</a>
+                    <a class="nav-link {% if request.resolver_match.namespace == 'jobs' and request.resolver_match.url_name == 'list' %}active{% endif %}" href="{% url 'jobs:list' %}">Tìm việc</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{% url 'companies:list' %}">Công ty</a>
+                    <a class="nav-link {% if request.resolver_match.namespace == 'companies' %}active{% endif %}" href="{% url 'companies:list' %}">Công ty</a>
                 </li>
-                {% if user.is_authenticated and user.role == "candidate" %}
+
+                {% if is_candidate %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'applications:my_applications' %}">Đơn ứng tuyển</a>
+                        <a class="nav-link {% if request.resolver_match.url_name == 'my_applications' %}active{% endif %}" href="{% url 'applications:my_applications' %}">
+                            Đơn ứng tuyển
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'applications:my_bookmarks' %}">Việc đã lưu</a>
+                        <a class="nav-link {% if request.resolver_match.url_name == 'my_bookmarks' %}active{% endif %}" href="{% url 'applications:my_bookmarks' %}">
+                            Việc đã lưu
+                        </a>
                     </li>
-                {% elif user.is_authenticated and user.role == "recruiter" %}
+                {% elif is_recruiter_or_admin %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'jobs:dashboard' %}">Thống kê</a>
+                        <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'jobs:dashboard' %}">Thống kê</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'jobs:manage' %}">Tin của tôi</a>
+                        <a class="nav-link {% if request.resolver_match.url_name == 'manage' %}active{% endif %}" href="{% url 'jobs:manage' %}">Tin của tôi</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'manage_company' %}active{% endif %}" href="{% url 'companies:manage_company' %}">Công ty của tôi</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'jobs:create' %}">Đăng tin</a>
@@ -48,22 +57,40 @@
                 {% endif %}
             </ul>
 
-            <div class="d-flex gap-2 align-items-center">
+            <div class="d-flex align-items-center gap-2">
                 {% if user.is_authenticated %}
-                    <a href="{% url 'users:profile' %}" class="btn btn-outline-light btn-sm">
-                        {{ user.username }}
-                    </a>
-                    <form method="post" action="{% url 'users:logout' %}">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-light btn-sm">Đăng xuất</button>
-                    </form>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-light btn-sm dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            {% if user.avatar %}
+                                <img src="{{ user.avatar.url }}" alt="" class="avatar avatar-sm">
+                            {% else %}
+                                <span class="avatar avatar-sm avatar-placeholder">{{ user.username|first|upper }}</span>
+                            {% endif %}
+                            <span class="d-none d-sm-inline">{{ user.username }}</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow">
+                            <li>
+                                <span class="dropdown-item-text small text-muted">
+                                    {{ user.get_role_display }}
+                                </span>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{% url 'users:profile' %}">Hồ sơ của tôi</a></li>
+                            {% if is_admin %}
+                                <li><a class="dropdown-item" href="{% url 'admin:index' %}">Trang quản trị</a></li>
+                            {% endif %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="post" action="{% url 'logout' %}" class="px-3 py-1">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-danger btn-sm w-100">Đăng xuất</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
                 {% else %}
-                    <a href="{% url 'users:login' %}" class="btn btn-outline-light btn-sm">
-                        Đăng nhập
-                    </a>
-                    <a href="{% url 'users:signup' %}" class="btn btn-light btn-sm">
-                        Đăng ký
-                    </a>
+                    <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm">Đăng nhập</a>
+                    <a href="{% url 'users:signup' %}" class="btn btn-light btn-sm">Đăng ký</a>
                 {% endif %}
             </div>
         </div>

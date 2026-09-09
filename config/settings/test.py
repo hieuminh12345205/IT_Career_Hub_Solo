@@ -1,5 +1,7 @@
 from .base import *  # noqa: F403
 
+ALLOW_DEMO_SEED = True
+
 # Tests are isolated from both the developer SQLite file and PostgreSQL.
 DATABASES = {
     "default": {

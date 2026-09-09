@@ -4,31 +4,57 @@
 
 {% block content %}
 <div class="container py-5">
-    <h1 class="h3 mb-4">Công việc đã lưu</h1>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Công việc đã lưu</h1>
+            <p class="text-muted mb-0">Danh sách các vị trí bạn đánh dấu để xem lại sau.</p>
+        </div>
+        <a href="{% url 'jobs:list' %}" class="btn btn-outline-primary">
+            <i class="bi bi-search me-1"></i>Tìm việc mới
+        </a>
+    </div>
 
     {% if bookmarks %}
         <div class="row g-3">
             {% for bookmark in bookmarks %}
                 <div class="col-12">
-                    <div class="card card-body">
-                        <div class="d-flex flex-wrap justify-content-between gap-3">
-                            <div>
-                                <h2 class="h5 mb-1"><a href="{% url 'jobs:detail' bookmark.job.pk %}">{{ bookmark.job.title }}</a></h2>
-                                <p class="text-muted mb-1">{{ bookmark.job.company.name }}</p>
-                                <span class="badge {% if bookmark.job.is_active %}text-bg-success{% else %}text-bg-secondary{% endif %}">
-                                    {% if bookmark.job.is_active %}Đang tuyển{% else %}Đã đóng{% endif %}
-                                </span>
+                    <div class="card card-body border-0 shadow-sm">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                            <div class="d-flex align-items-center gap-3 min-w-0">
+                                {% if bookmark.job.company.logo %}
+                                    <img src="{{ bookmark.job.company.logo.url }}" alt="{{ bookmark.job.company.name }}" class="company-logo">
+                                {% else %}
+                                    <span class="company-logo company-logo-placeholder">{{ bookmark.job.company.name|first|upper }}</span>
+                                {% endif %}
+                                <div class="min-w-0">
+                                    <h2 class="h5 mb-1 text-truncate">
+                                        <a href="{% url 'jobs:detail' bookmark.job.pk %}" class="text-decoration-none">{{ bookmark.job.title }}</a>
+                                    </h2>
+                                    <p class="text-muted small mb-1 text-truncate">
+                                        {{ bookmark.job.company.name }}
+                                        <span class="mx-1">·</span>
+                                        <i class="bi bi-geo-alt me-1"></i>{{ bookmark.job.location }}
+                                        <span class="mx-1">·</span>
+                                        <span class="text-salary">{{ bookmark.job.salary_display }}</span>
+                                    </p>
+                                    <span class="badge rounded-pill {% if bookmark.job.is_active %}text-bg-success{% else %}text-bg-secondary{% endif %}">
+                                        {% if bookmark.job.is_active %}Đang tuyển{% else %}Đã đóng{% endif %}
+                                    </span>
+                                </div>
                             </div>
-                            <div class="d-flex align-items-start gap-2">
+
+                            <div class="d-flex align-items-center gap-2 flex-shrink-0">
                                 {% if bookmark.job.is_active %}
                                     <a href="{% url 'applications:apply' bookmark.job.pk %}" class="btn btn-primary btn-sm">
-                                        Ứng tuyển
+                                        <i class="bi bi-send me-1"></i>Ứng tuyển
                                     </a>
                                 {% endif %}
                                 <form method="post" action="{% url 'applications:toggle_bookmark' bookmark.job.pk %}">
                                     {% csrf_token %}
                                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                    <button type="submit" class="btn btn-outline-danger btn-sm">Bỏ lưu</button>
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                        <i class="bi bi-bookmark-x me-1"></i>Bỏ lưu
+                                    </button>
                                 </form>
                             </div>
                         </div>
@@ -37,21 +63,13 @@
             {% endfor %}
         </div>
 
-        {% if is_paginated %}
-            <nav class="mt-4" aria-label="Phân trang công việc đã lưu">
-                <ul class="pagination justify-content-center">
-                    {% if page_obj.has_previous %}
-                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Trước</a></li>
-                    {% endif %}
-                    <li class="page-item active"><span class="page-link">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span></li>
-                    {% if page_obj.has_next %}
-                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Sau</a></li>
-                    {% endif %}
-                </ul>
-            </nav>
-        {% endif %}
+        {% include 'partials/_pagination.html' %}
     {% else %}
-        <p class="text-muted">Bạn chưa lưu công việc nào.</p>
+        <div class="empty-state">
+            <i class="bi bi-bookmark"></i>
+            <p class="mb-1">Bạn chưa lưu công việc nào.</p>
+            <a href="{% url 'jobs:list' %}" class="btn btn-primary btn-sm mt-2">Khám phá việc làm</a>
+        </div>
     {% endif %}
 </div>
 {% endblock %}

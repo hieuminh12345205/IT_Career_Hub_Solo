@@ -1,41 +1,89 @@
 {% extends "base.html" %}
 
-{% block title %}{{ job.title }}{% endblock %}
+{% block title %}{{ job.title }} - {{ job.company.name }}{% endblock %}
 
 {% block content %}
 <div class="container py-5">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb small">
+            <li class="breadcrumb-item"><a href="{% url 'jobs:list' %}">Tìm việc</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'companies:detail' job.company.pk %}">{{ job.company.name }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ job.title }}</li>
+        </ol>
+    </nav>
+
     <div class="row g-4">
         <div class="col-lg-8">
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
-                    <span class="badge {% if job.is_active %}text-bg-success{% else %}text-bg-secondary{% endif %} mb-3">
-                        {% if job.is_active %}Đang tuyển{% else %}Đã đóng{% endif %}
-                    </span>
-                    <h1 class="h2">{{ job.title }}</h1>
-                    <p class="text-muted"><a href="{% url 'companies:detail' job.company.pk %}">{{ job.company.name }}</a> · {{ job.location }}</p>
-                    <div class="mb-4">
-                        {% for skill in job.skills.all %}<span class="skill-tag">{{ skill.name }}</span>{% endfor %}
+                    <div class="d-flex flex-wrap align-items-start gap-3 mb-3">
+                        {% if job.company.logo %}
+                            <img src="{{ job.company.logo.url }}" alt="{{ job.company.name }}" class="company-logo company-logo-lg">
+                        {% else %}
+                            <span class="company-logo company-logo-lg company-logo-placeholder">{{ job.company.name|first|upper }}</span>
+                        {% endif %}
+
+                        <div class="flex-grow-1 min-w-0">
+                            <span class="badge {% if job.is_active %}text-bg-success{% else %}text-bg-secondary{% endif %} mb-2">
+                                {% if job.is_active %}Đang tuyển{% else %}Đã đóng{% endif %}
+                            </span>
+                            <h1 class="h2 mb-1">{{ job.title }}</h1>
+                            <p class="text-muted mb-0">
+                                <a href="{% url 'companies:detail' job.company.pk %}">{{ job.company.name }}</a>
+                                <span class="mx-1">·</span>
+                                <i class="bi bi-geo-alt me-1"></i>{{ job.location }}
+                                <span class="mx-1">·</span>
+                                <i class="bi bi-clock me-1"></i>{{ job.created_at|date:"d/m/Y" }}
+                            </p>
+                        </div>
                     </div>
+
+                    <div class="mb-4">
+                        {% for skill in job.skills.all %}
+                            <span class="skill-tag">{{ skill.name }}</span>
+                        {% empty %}
+                            <span class="text-muted small">Chưa gắn kỹ năng cụ thể.</span>
+                        {% endfor %}
+                    </div>
+
                     <h2 class="h5">Mô tả công việc</h2>
-                    <p>{{ job.description|linebreaks }}</p>
-                    <h2 class="h5">Yêu cầu</h2>
-                    <p>{{ job.requirement|linebreaks }}</p>
+                    <div class="mb-4">{{ job.description|linebreaks }}</div>
+
+                    <h2 class="h5">Yêu cầu ứng viên</h2>
+                    <div>{{ job.requirement|linebreaks }}</div>
                 </div>
             </div>
         </div>
+
         <div class="col-lg-4">
-            <div class="card shadow-sm border-0 sticky-top" style="top: 90px;">
+            <div class="card shadow-sm border-0 sticky-sidebar">
                 <div class="card-body p-4">
-                    <h2 class="h5">Thông tin nhanh</h2>
-                    <p class="mb-2"><strong>Loại việc:</strong> {{ job.job_type_display_vi }}</p>
-                    <p class="mb-2"><strong>Kinh nghiệm:</strong> {{ job.experience_level_display_vi }}</p>
-                    <p class="mb-3"><strong>Lương:</strong> {{ job.salary_display }}</p>
-                    {% if user.is_authenticated and user.role == "candidate" %}
+                    <h2 class="h5 mb-3">Thông tin nhanh</h2>
+
+                    <dl class="job-facts mb-4">
+                        <dt><i class="bi bi-briefcase me-1"></i>Loại việc</dt>
+                        <dd>{{ job.job_type_display_vi }}</dd>
+
+                        <dt><i class="bi bi-mortarboard me-1"></i>Kinh nghiệm</dt>
+                        <dd>{{ job.experience_level_display_vi }}</dd>
+
+                        <dt><i class="bi bi-cash-coin me-1"></i>Mức lương</dt>
+                        <dd class="text-salary fw-semibold">{{ job.salary_display }}</dd>
+                    </dl>
+
+                    {% if is_candidate %}
                         {% if has_applied %}
-                            <div class="alert alert-info">Bạn đã ứng tuyển công việc này.</div>
+                            <div class="alert alert-info mb-2">
+                                <i class="bi bi-check-circle me-1"></i>Bạn đã ứng tuyển công việc này.
+                            </div>
                         {% elif job.is_active %}
-                            <a href="{% url 'applications:apply' job.pk %}" class="btn btn-primary w-100 mb-2">Ứng tuyển</a>
+                            <a href="{% url 'applications:apply' job.pk %}" class="btn btn-primary w-100 mb-2">
+                                <i class="bi bi-send me-1"></i>Ứng tuyển ngay
+                            </a>
+                        {% else %}
+                            <div class="alert alert-secondary mb-2">Tin tuyển dụng này đã đóng.</div>
                         {% endif %}
+
                         {% if job.is_active or is_bookmarked %}
                             <form method="post" action="{% url 'applications:toggle_bookmark' job.pk %}">
                                 {% csrf_token %}
@@ -45,15 +93,25 @@
                                     <input type="hidden" name="next" value="{% url 'applications:my_bookmarks' %}">
                                 {% endif %}
                                 <button type="submit" class="btn btn-outline-secondary w-100">
-                                    {% if is_bookmarked %}Bỏ lưu{% else %}Lưu công việc{% endif %}
+                                    {% if is_bookmarked %}
+                                        <i class="bi bi-bookmark-fill me-1"></i>Bỏ lưu
+                                    {% else %}
+                                        <i class="bi bi-bookmark me-1"></i>Lưu công việc
+                                    {% endif %}
                                 </button>
                             </form>
                         {% endif %}
                     {% elif not user.is_authenticated %}
-                        <a href="{% url 'users:login' %}" class="btn btn-primary w-100">Đăng nhập để ứng tuyển</a>
+                        <a href="{% url 'login' %}?next={{ request.path|urlencode }}" class="btn btn-primary w-100">
+                            Đăng nhập để ứng tuyển
+                        </a>
                     {% elif can_manage_job %}
-                        <a href="{% url 'jobs:edit' job.pk %}" class="btn btn-outline-primary w-100 mb-2">Sửa tin</a>
-                        <a href="{% url 'applications:job_applicants' job.pk %}" class="btn btn-primary w-100">Xem ứng viên</a>
+                        <a href="{% url 'jobs:edit' job.pk %}" class="btn btn-outline-primary w-100 mb-2">
+                            <i class="bi bi-pencil me-1"></i>Sửa tin
+                        </a>
+                        <a href="{% url 'applications:job_applicants' job.pk %}" class="btn btn-primary w-100">
+                            <i class="bi bi-people me-1"></i>Xem ứng viên
+                        </a>
                     {% endif %}
                 </div>
             </div>

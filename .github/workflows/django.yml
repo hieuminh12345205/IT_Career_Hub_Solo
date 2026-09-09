@@ -6,17 +6,49 @@ on:
       - main
       - develop
       - "feature/**"
+      - "codex/**"
   pull_request:
     branches:
       - main
       - develop
 
+permissions:
+  contents: read
+
+concurrency:
+  group: django-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        settings: [config.settings.test, config.settings.test_postgres]
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: it_career_hub
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d it_career_hub"
+          --health-interval=5s --health-timeout=5s --health-retries=10
 
     env:
-      DJANGO_SETTINGS_MODULE: config.settings.test
+      DJANGO_SETTINGS_MODULE: ${{ matrix.settings }}
+      DB_ENGINE: django.db.backends.postgresql
+      DB_NAME: it_career_hub
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_HOST: 127.0.0.1
+      DB_PORT: "5432"
 
     steps:
       - name: Checkout
@@ -27,7 +59,9 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: requirements/dev.txt
+          cache-dependency-path: |
+            requirements/base.txt
+            requirements/dev.txt
 
       - name: Install dependencies
         run: |
@@ -35,15 +69,20 @@ jobs:
           python -m pip install -r requirements/dev.txt
 
       - name: Check Django project
-        run: python manage.py check --settings=config.settings.test
+        run: python manage.py check
 
-      - name: Check Python errors
+      - name: Lint (flake8)
         run: python -m flake8 .
+
+      - name: Check formatting (black)
+        run: python -m black --check .
+
+      - name: Check import order (isort)
+        run: python -m isort --check-only .
 
       - name: Check migrations
         run: >-
           python manage.py makemigrations --check --dry-run
-          --settings=config.settings.test
 
       - name: Run tests
-        run: python manage.py test --settings=config.settings.test
+        run: python manage.py test

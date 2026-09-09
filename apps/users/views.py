@@ -86,12 +86,22 @@ def candidate_cv(request):
     profile = getattr(request.user, "candidate_profile", None)
     if not profile or not profile.cv_file:
         raise Http404
-    return FileResponse(
-        profile.cv_file.open("rb"),
+
+    try:
+        profile.cv_file.open("rb")
+    except (FileNotFoundError, OSError, ValueError):
+        raise Http404 from None
+
+    response = FileResponse(
+        profile.cv_file,
         as_attachment=False,
-        filename=Path(profile.cv_file.name).name,
+        filename=Path(profile.cv_file.name).name or "cv.pdf",
         content_type="application/pdf",
     )
+    # CV là dữ liệu riêng tư: không cho proxy/trình duyệt cache lại.
+    response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 class ProfileRedirectView(LoginRequiredMixin, TemplateView):

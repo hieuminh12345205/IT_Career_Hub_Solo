@@ -2,6 +2,8 @@ from django.conf import settings
 from django.core.validators import FileExtensionValidator
 from django.db import models
 
+from apps.core.validators import validate_pdf_upload
+
 
 class Application(models.Model):
     class Status(models.TextChoices):
@@ -22,7 +24,10 @@ class Application(models.Model):
     )
     cv = models.FileField(
         upload_to="application_cvs/",
-        validators=[FileExtensionValidator(allowed_extensions=["pdf"])],
+        validators=[
+            FileExtensionValidator(allowed_extensions=["pdf"]),
+            validate_pdf_upload,
+        ],
     )
     cover_letter = models.TextField(blank=True)
     status = models.CharField(

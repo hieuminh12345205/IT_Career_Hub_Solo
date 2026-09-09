@@ -1,18 +1,23 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
+from django.db.models import Count, Prefetch, Q
 from django.urls import reverse_lazy
 from django.views.generic import DetailView, ListView, UpdateView
 
-from apps.users.models import User
+from apps.jobs.models import Job
+from apps.jobs.services import is_recruiter_or_admin
 
 from .forms import CompanyForm
 from .models import Company
 
 
 class RecruiterRequiredMixin(LoginRequiredMixin):
+    """Chỉ Recruiter (và Admin) mới vào được trang quản lý công ty."""
+
     def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated and request.user.role != User.Role.RECRUITER:
+        if request.user.is_authenticated and not is_recruiter_or_admin(request.user):
             raise PermissionDenied
         return super().dispatch(request, *args, **kwargs)
 
@@ -24,7 +29,11 @@ class CompanyListView(ListView):
     paginate_by = 12
 
     def get_queryset(self):
-        return Company.objects.select_related("recruiter").order_by("name")
+        return (
+            Company.objects.select_related("recruiter")
+            .annotate(open_job_count=Count("job", filter=Q(job__is_active=True)))
+            .order_by("name")
+        )
 
 
 class CompanyDetailView(DetailView):
@@ -33,7 +42,17 @@ class CompanyDetailView(DetailView):
     context_object_name = "company"
 
     def get_queryset(self):
-        return Company.objects.select_related("recruiter").prefetch_related("job_set")
+        # Lọc tin đang tuyển ngay ở tầng query để {% empty %} trong template
+        # phản ánh đúng "không có tin nào đang mở".
+        return Company.objects.select_related("recruiter").prefetch_related(
+            Prefetch(
+                "job_set",
+                queryset=Job.objects.filter(is_active=True)
+                .prefetch_related("skills")
+                .order_by("-created_at"),
+                to_attr="open_jobs",
+            )
+        )
 
 
 class ManageCompanyView(RecruiterRequiredMixin, UpdateView):
@@ -56,6 +75,7 @@ class ManageCompanyView(RecruiterRequiredMixin, UpdateView):
 
         return Company(recruiter=self.request.user)
 
+    @transaction.atomic
     def form_valid(self, form):
         is_new_company = form.instance.pk is None
         if is_new_company:

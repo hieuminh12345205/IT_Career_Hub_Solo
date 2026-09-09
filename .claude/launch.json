@@ -1,0 +1,16 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "it-career-hub-dev",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": [
+        "manage.py",
+        "runserver",
+        "8000",
+        "--settings=config.settings.dev"
+      ],
+      "port": 8000
+    }
+  ]
+}

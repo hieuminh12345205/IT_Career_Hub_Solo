@@ -1,11 +1,17 @@
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q
 
 from apps.companies.models import Company
 
 
 class Skill(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100, unique=True, verbose_name="Tên kỹ năng")
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Kỹ năng"
+        verbose_name_plural = "Kỹ năng"
 
     def __str__(self):
         return self.name
@@ -73,6 +79,34 @@ class Job(models.Model):
     is_active = models.BooleanField(default=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Tin tuyển dụng"
+        verbose_name_plural = "Tin tuyển dụng"
+        indexes = [
+            models.Index(fields=["-created_at"], name="job_created_idx"),
+            models.Index(fields=["is_active", "-created_at"], name="job_active_idx"),
+            models.Index(fields=["location"], name="job_location_idx"),
+        ]
+        constraints = [
+            # clean() chỉ chạy qua ModelForm/Admin. Ràng buộc dưới đây chốt ở
+            # tầng DB nên .save() hoặc bulk_create trực tiếp cũng không lách được.
+            models.CheckConstraint(
+                condition=Q(salary_min__isnull=True) | Q(salary_min__gte=0),
+                name="job_salary_min_non_negative",
+            ),
+            models.CheckConstraint(
+                condition=Q(salary_max__isnull=True) | Q(salary_max__gte=0),
+                name="job_salary_max_non_negative",
+            ),
+            models.CheckConstraint(
+                condition=Q(salary_min__isnull=True)
+                | Q(salary_max__isnull=True)
+                | Q(salary_min__lte=models.F("salary_max")),
+                name="job_salary_range_ordered",
+            ),
+        ]
 
     def clean(self):
         """Validate salary bounds for every ModelForm, including Django Admin."""

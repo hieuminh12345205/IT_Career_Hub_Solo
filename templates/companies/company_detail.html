@@ -6,26 +6,40 @@
 <div class="container py-5">
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body p-4">
-            <h1 class="h2">{{ company.name }}</h1>
-            <p class="text-muted"><i class="bi bi-geo-alt"></i> {{ company.location }}</p>
-            {% if company.website %}<p><a href="{{ company.website }}" target="_blank" rel="noopener">Website công ty</a></p>{% endif %}
-            <p>{{ company.description|linebreaks }}</p>
+            <div class="d-flex flex-wrap align-items-start gap-3">
+                {% if company.logo %}
+                    <img src="{{ company.logo.url }}" alt="{{ company.name }}" class="company-logo company-logo-lg">
+                {% else %}
+                    <span class="company-logo company-logo-lg company-logo-placeholder">{{ company.name|first|upper }}</span>
+                {% endif %}
+
+                <div class="flex-grow-1 min-w-0">
+                    <h1 class="h2 mb-1">{{ company.name }}</h1>
+                    <p class="text-muted mb-2"><i class="bi bi-geo-alt me-1"></i>{{ company.location }}</p>
+                    {% if company.website %}
+                        <a href="{{ company.website }}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>Website công ty
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <hr>
+            <div>{{ company.description|linebreaks }}</div>
         </div>
     </div>
 
     <h2 class="h4 mb-3">Việc đang tuyển</h2>
-    <div class="row g-3">
-        {% for job in company.job_set.all %}
-            {% if job.is_active %}
-                <div class="col-md-6">
-                    <div class="card card-body border-0 shadow-sm">
-                        <h3 class="h5"><a href="{% url 'jobs:detail' job.pk %}">{{ job.title }}</a></h3>
-                        <p class="text-muted mb-0">{{ job.location }} · {{ job.get_job_type_display }}</p>
-                    </div>
-                </div>
-            {% endif %}
+    <div class="row g-4">
+        {% for job in company.open_jobs %}
+            <div class="col-md-6 col-xl-4">{% include 'partials/_job_card.html' %}</div>
         {% empty %}
-            <div class="col-12"><p class="text-muted">Công ty chưa có tin tuyển dụng.</p></div>
+            <div class="col-12">
+                <div class="empty-state">
+                    <i class="bi bi-inbox"></i>
+                    <p class="mb-0">Công ty hiện chưa có tin tuyển dụng nào đang mở.</p>
+                </div>
+            </div>
         {% endfor %}
     </div>
 </div>

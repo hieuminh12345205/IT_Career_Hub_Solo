@@ -1,0 +1,10 @@
+{% comment %}Badge trạng thái đơn ứng tuyển. Cần: status (giá trị), label (nhãn hiển thị).{% endcomment %}
+{% if status == 'accepted' %}
+    <span class="badge rounded-pill text-bg-success"><i class="bi bi-check-circle me-1"></i>{{ label }}</span>
+{% elif status == 'rejected' %}
+    <span class="badge rounded-pill text-bg-danger"><i class="bi bi-x-circle me-1"></i>{{ label }}</span>
+{% elif status == 'reviewing' %}
+    <span class="badge rounded-pill text-bg-info"><i class="bi bi-eye me-1"></i>{{ label }}</span>
+{% else %}
+    <span class="badge rounded-pill text-bg-warning"><i class="bi bi-hourglass-split me-1"></i>{{ label }}</span>
+{% endif %}

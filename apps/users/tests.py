@@ -107,6 +107,36 @@ class UserProfileSignalTests(SimpleTestCase):
 
 
 class UserFlowTests(TestCase):
+    @patch(
+        "apps.users.signals.CandidateProfile.objects.get_or_create",
+        side_effect=RuntimeError("Profile could not be saved"),
+    )
+    def test_failed_profile_creation_does_not_leave_partial_signup(self, _):
+        with self.assertRaises(RuntimeError):
+            self.client.post(
+                reverse("users:candidate_signup"),
+                {
+                    "username": "partial-signup",
+                    "email": "partial@example.com",
+                    "password1": "Strong-pass-123!",
+                    "password2": "Strong-pass-123!",
+                },
+            )
+        self.assertFalse(User.objects.filter(username="partial-signup").exists())
+
+    def test_signup_rejects_weak_password(self):
+        response = self.client.post(
+            reverse("users:candidate_signup"),
+            {
+                "username": "weak-password-user",
+                "email": "weak@example.com",
+                "password1": "123",
+                "password2": "123",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(User.objects.filter(username="weak-password-user").exists())
+
     @classmethod
     def setUpClass(cls):
         cls.media_root = tempfile.mkdtemp()

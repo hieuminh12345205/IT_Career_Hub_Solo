@@ -4,29 +4,54 @@
 
 {% block content %}
 <div class="container py-5">
-    <div class="text-center mb-4">
-        <h1 class="h2">Chọn loại tài khoản</h1>
-        <p class="text-muted">IT Career Hub hỗ trợ hai luồng riêng cho ứng viên và nhà tuyển dụng.</p>
+    <div class="text-center mb-5">
+        <h1 class="h2 mb-2">Chọn loại tài khoản</h1>
+        <p class="section-description">
+            IT Career Hub có hai luồng riêng: một cho ứng viên tìm việc, một cho nhà
+            tuyển dụng đăng tin và xét duyệt hồ sơ.
+        </p>
     </div>
+
     <div class="row g-4 justify-content-center">
-        <div class="col-md-5">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body p-4">
-                    <h2 class="h4">Candidate</h2>
-                    <p class="text-muted">Tìm việc, lưu việc, upload CV và theo dõi đơn ứng tuyển.</p>
-                    <a href="{% url 'users:candidate_signup' %}" class="btn btn-primary">Đăng ký Candidate</a>
+        <div class="col-md-6 col-lg-5">
+            <div class="card h-100 shadow-sm border-0 hover-lift">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="feature-icon mx-0 mb-3"><i class="bi bi-person-badge"></i></div>
+                    <h2 class="h4 mb-2">Ứng viên</h2>
+                    <ul class="list-unstyled text-muted small flex-grow-1">
+                        <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>Tìm và lọc việc làm IT</li>
+                        <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>Lưu việc để xem lại sau</li>
+                        <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>Tải CV và ứng tuyển nhanh</li>
+                        <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>Theo dõi trạng thái hồ sơ</li>
+                    </ul>
+                    <a href="{% url 'users:candidate_signup' %}" class="btn btn-primary mt-3">
+                        Đăng ký ứng viên
+                    </a>
                 </div>
             </div>
         </div>
-        <div class="col-md-5">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body p-4">
-                    <h2 class="h4">Recruiter</h2>
-                    <p class="text-muted">Quản lý công ty, đăng tin tuyển dụng và xét duyệt ứng viên.</p>
-                    <a href="{% url 'users:recruiter_signup' %}" class="btn btn-outline-primary">Đăng ký Recruiter</a>
+
+        <div class="col-md-6 col-lg-5">
+            <div class="card h-100 shadow-sm border-0 hover-lift">
+                <div class="card-body p-4 d-flex flex-column">
+                    <div class="feature-icon mx-0 mb-3"><i class="bi bi-building"></i></div>
+                    <h2 class="h4 mb-2">Nhà tuyển dụng</h2>
+                    <ul class="list-unstyled text-muted small flex-grow-1">
+                        <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>Tạo hồ sơ công ty</li>
+                        <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>Đăng và quản lý tin tuyển dụng</li>
+                        <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>Xem CV và duyệt ứng viên</li>
+                        <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i>Theo dõi thống kê tuyển dụng</li>
+                    </ul>
+                    <a href="{% url 'users:recruiter_signup' %}" class="btn btn-outline-primary mt-3">
+                        Đăng ký nhà tuyển dụng
+                    </a>
                 </div>
             </div>
         </div>
     </div>
+
+    <p class="text-center text-muted mt-4 mb-0">
+        Đã có tài khoản? <a href="{% url 'login' %}">Đăng nhập</a>.
+    </p>
 </div>
 {% endblock %}

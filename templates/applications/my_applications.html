@@ -4,75 +4,53 @@
 
 {% block content %}
 <div class="container py-5">
-    <h1 class="h3 mb-4">Đơn ứng tuyển của tôi</h1>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Đơn ứng tuyển của tôi</h1>
+            <p class="text-muted mb-0">Theo dõi trạng thái các vị trí bạn đã ứng tuyển.</p>
+        </div>
+        <a href="{% url 'jobs:list' %}" class="btn btn-outline-primary">
+            <i class="bi bi-search me-1"></i>Tìm việc mới
+        </a>
+    </div>
 
     {% if applications %}
-        <div class="table-responsive">
-            <table class="table table-hover align-middle bg-white">
-                <thead>
-                    <tr>
-                        <th>Vị trí</th>
-                        <th>Công ty</th>
-                        <th>Ngày ứng tuyển</th>
-                        <th>Trạng thái</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for application in applications %}
+        <div class="card border-0 shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
                         <tr>
-                            <td><a href="{% url 'jobs:detail' application.job.pk %}">{{ application.job.title }}</a></td>
-                            <td>{{ application.job.company.name }}</td>
-                            <td>{{ application.applied_at|date:"d/m/Y" }}</td>
-                            <td><span class="badge text-bg-secondary">{{ application.get_status_display }}</span></td>
+                            <th scope="col">Vị trí</th>
+                            <th scope="col">Công ty</th>
+                            <th scope="col">Ngày ứng tuyển</th>
+                            <th scope="col">Trạng thái</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        {% for application in applications %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'jobs:detail' application.job.pk %}" class="fw-semibold text-decoration-none">
+                                        {{ application.job.title }}
+                                    </a>
+                                </td>
+                                <td class="text-muted">{{ application.job.company.name }}</td>
+                                <td class="text-muted">{{ application.applied_at|date:"d/m/Y" }}</td>
+                                <td>{% include 'partials/_status_badge.html' with status=application.status label=application.get_status_display %}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-        {% if is_paginated %}
-        <nav class="mt-4" aria-label="Pagination">
-            <ul class="pagination justify-content-center">
-                {% if page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page=1">Đầu tiên</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Trước</a>
-                    </li>
-                {% else %}
-                    <li class="page-item disabled">
-                        <span class="page-link">Đầu tiên</span>
-                    </li>
-                    <li class="page-item disabled">
-                        <span class="page-link">Trước</span>
-                    </li>
-                {% endif %}
-
-                <li class="page-item active">
-                    <span class="page-link">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
-                </li>
-
-                {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Sau</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Cuối</a>
-                    </li>
-                {% else %}
-                    <li class="page-item disabled">
-                        <span class="page-link">Sau</span>
-                    </li>
-                    <li class="page-item disabled">
-                        <span class="page-link">Cuối</span>
-                    </li>
-                {% endif %}
-            </ul>
-        </nav>
-        {% endif %}
+        {% include 'partials/_pagination.html' %}
     {% else %}
-        <p class="text-muted">Bạn chưa có đơn ứng tuyển nào.</p>
+        <div class="empty-state">
+            <i class="bi bi-file-earmark-text"></i>
+            <p class="mb-1">Bạn chưa có đơn ứng tuyển nào.</p>
+            <a href="{% url 'jobs:list' %}" class="btn btn-primary btn-sm mt-2">Tìm việc ngay</a>
+        </div>
     {% endif %}
 </div>
 {% endblock %}

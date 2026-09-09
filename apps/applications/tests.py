@@ -1,19 +1,23 @@
 import shutil
 import tempfile
 from io import StringIO
+from smtplib import SMTPException
 from unittest.mock import patch
 
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.db import IntegrityError, transaction
-from django.test import SimpleTestCase, TestCase, override_settings
+from django.forms import modelform_factory
+from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
 from apps.companies.models import Company
 from apps.jobs.models import Job
 from apps.users.models import User
 
+from .forms import ApplicationForm
 from .models import Application, Bookmark
 
 
@@ -41,7 +45,6 @@ class ApplicationModelDefinitionTests(SimpleTestCase):
         cv_field = Application._meta.get_field("cv")
 
         self.assertEqual(cv_field.upload_to, "application_cvs/")
-        self.assertEqual(len(cv_field.validators), 1)
         self.assertEqual(cv_field.validators[0].allowed_extensions, ["pdf"])
 
     def test_ordering_is_by_applied_at_descending(self):
@@ -276,8 +279,10 @@ class ApplicationViewTests(TestCase):
         self.assertContains(response, "Bạn đã ứng tuyển công việc này rồi.")
         self.assertEqual(Application.objects.count(), 1)
 
-    @patch("apps.applications.forms.ApplicationForm.save", side_effect=IntegrityError)
-    def test_duplicate_race_returns_form_error_instead_of_server_error(self, _):
+    @patch.object(ApplicationForm, "clean", lambda form: form.cleaned_data)
+    def test_duplicate_race_returns_form_error_instead_of_server_error(self):
+        # Giả lập đơn khác đã lưu sau bước form.clean() kiểm tra trùng.
+        self.create_application()
         self.client.force_login(self.candidate)
 
         response = self.client.post(
@@ -697,10 +702,11 @@ class ApplicationViewTests(TestCase):
     def test_full_application_flow_sends_both_notifications(self):
         self.client.force_login(self.candidate)
 
-        apply_response = self.client.post(
-            reverse("applications:apply", kwargs={"job_pk": self.job.pk}),
-            {"cover_letter": "I would like to apply.", "cv": self.pdf_file()},
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            apply_response = self.client.post(
+                reverse("applications:apply", kwargs={"job_pk": self.job.pk}),
+                {"cover_letter": "I would like to apply.", "cv": self.pdf_file()},
+            )
 
         self.assertRedirects(
             apply_response,
@@ -712,13 +718,14 @@ class ApplicationViewTests(TestCase):
 
         application = Application.objects.get()
         self.client.force_login(self.recruiter)
-        review_response = self.client.post(
-            reverse(
-                "applications:update_status",
-                kwargs={"pk": application.pk},
-            ),
-            {"status": Application.Status.REVIEWING},
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            review_response = self.client.post(
+                reverse(
+                    "applications:update_status",
+                    kwargs={"pk": application.pk},
+                ),
+                {"status": Application.Status.REVIEWING},
+            )
 
         self.assertRedirects(
             review_response,
@@ -754,8 +761,144 @@ class ApplicationViewTests(TestCase):
         )
         self.assertEqual(len(mail.outbox), 0)
 
+    def test_job_closed_after_validation_cannot_receive_application(self):
+        original_clean = ApplicationForm.clean
+
+        def close_after_validation(form):
+            result = original_clean(form)
+            Job.objects.filter(pk=self.job.pk).update(is_active=False)
+            return result
+
+        self.client.force_login(self.candidate)
+        with patch.object(ApplicationForm, "clean", close_after_validation):
+            response = self.client.post(
+                reverse("applications:apply", args=[self.job.pk]),
+                {"cv": self.pdf_file()},
+            )
+        self.assertContains(response, "Công việc này đã đóng ứng tuyển.")
+        self.assertFalse(Application.objects.exists())
+
+    def test_generic_model_form_also_rejects_fake_cv(self):
+        form_class = modelform_factory(Application, fields=["candidate", "job", "cv"])
+        form = form_class(
+            data={"candidate": self.candidate.pk, "job": self.job.pk},
+            files={"cv": self.pdf_file(content=b"not a pdf")},
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("cv", form.errors)
+
+    def test_rollback_discards_status_email(self):
+        application = self.create_application()
+        self.client.force_login(self.recruiter)
+        with self.captureOnCommitCallbacks(execute=True) as callbacks:
+            with transaction.atomic():
+                self.client.post(
+                    reverse("applications:update_status", args=[application.pk]),
+                    {"status": Application.Status.ACCEPTED},
+                )
+                self.assertEqual(len(mail.outbox), 0)
+                transaction.set_rollback(True)
+        application.refresh_from_db()
+        self.assertEqual(application.status, Application.Status.PENDING)
+        self.assertEqual(callbacks, [])
+        self.assertEqual(len(mail.outbox), 0)
+
+    @patch(
+        "apps.applications.notifications.send_mail", side_effect=SMTPException("down")
+    )
+    def test_smtp_failure_is_logged_without_losing_application(self, _):
+        self.client.force_login(self.candidate)
+        with self.assertLogs("apps.applications.notifications", level="ERROR") as logs:
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(
+                    reverse("applications:apply", args=[self.job.pk]),
+                    {"cv": self.pdf_file()},
+                )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Application.objects.count(), 1)
+        self.assertIn("notification_failed", logs.output[0])
+        self.assertNotIn(self.candidate.email, logs.output[0])
+
+    def test_repeated_status_update_sends_only_one_email_and_logs_actor(self):
+        application = self.create_application()
+        self.client.force_login(self.recruiter)
+        with self.assertLogs("apps.applications.views", level="INFO") as logs:
+            with self.captureOnCommitCallbacks(execute=True):
+                for _ in range(2):
+                    self.client.post(
+                        reverse("applications:update_status", args=[application.pk]),
+                        {"status": Application.Status.REVIEWING},
+                    )
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(f"actor_id={self.recruiter.pk}", logs.output[0])
+        self.assertIn("old_status=pending new_status=reviewing", logs.output[0])
+
+    def test_bookmark_rejects_external_redirect_and_get(self):
+        self.client.force_login(self.candidate)
+        url = reverse("applications:toggle_bookmark", args=[self.job.pk])
+        self.assertEqual(self.client.get(url).status_code, 405)
+        response = self.client.post(url, {"next": "https://example.org/phishing"})
+        self.assertRedirects(response, reverse("applications:my_bookmarks"))
+
+    def test_closed_job_can_only_be_unbookmarked(self):
+        self.client.force_login(self.candidate)
+        url = reverse("applications:toggle_bookmark", args=[self.closed_job.pk])
+        self.assertEqual(self.client.post(url).status_code, 404)
+        Bookmark.objects.create(candidate=self.candidate, job=self.closed_job)
+        self.assertEqual(self.client.post(url).status_code, 302)
+        self.assertFalse(Bookmark.objects.exists())
+
+    def test_state_changing_endpoints_enforce_csrf(self):
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.candidate)
+        self.assertEqual(
+            client.post(
+                reverse("applications:toggle_bookmark", args=[self.job.pk])
+            ).status_code,
+            403,
+        )
+        application = self.create_application()
+        client.force_login(self.recruiter)
+        self.assertEqual(
+            client.post(
+                reverse("applications:update_status", args=[application.pk]),
+                {"status": Application.Status.ACCEPTED},
+            ).status_code,
+            403,
+        )
+
 
 class SeedDataCommandTests(TestCase):
+    @override_settings(ALLOW_DEMO_SEED=False)
+    def test_seed_is_blocked_outside_dev(self):
+        with self.assertRaises(CommandError):
+            call_command("seed_data", stdout=StringIO())
+        self.assertFalse(User.objects.exists())
+
+    def test_seed_preserves_changed_passwords_and_jobs(self):
+        call_command("seed_data", stdout=StringIO())
+        user = User.objects.get(username="demo_admin")
+        user.set_password("My-new-private-password!")
+        user.save()
+        job = Job.objects.first()
+        job.is_active = False
+        job.description = "Edited by the team"
+        job.save()
+        call_command("seed_data", stdout=StringIO())
+        user.refresh_from_db()
+        job.refresh_from_db()
+        self.assertTrue(user.check_password("My-new-private-password!"))
+        self.assertFalse(job.is_active)
+        self.assertEqual(job.description, "Edited by the team")
+
+    def test_seed_does_not_promote_existing_candidate_to_admin(self):
+        user = User.objects.create_user(username="demo_admin")
+        with self.assertRaises(CommandError):
+            call_command("seed_data", stdout=StringIO())
+        user.refresh_from_db()
+        self.assertFalse(user.is_superuser)
+        self.assertEqual(User.objects.count(), 1)
+
     def test_seed_data_creates_demo_records_and_is_idempotent(self):
         output = StringIO()
 

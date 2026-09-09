@@ -12,6 +12,18 @@ ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv(
 
 AUTH_USER_MODEL = "users.User"
 
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        "NAME": (
+            "django.contrib.auth.password_validation."
+            "UserAttributeSimilarityValidator"
+        )
+    },
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+]
+
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
@@ -26,7 +38,6 @@ INSTALLED_APPS = [
     # Third-party
     "crispy_forms",
     "crispy_bootstrap5",
-    "django_filters",
     # Local apps
     "apps.users.apps.UsersConfig",
     "apps.companies",
@@ -58,6 +69,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "apps.core.context_processors.user_roles",
             ],
         },
     },
@@ -93,7 +105,7 @@ STATICFILES_DIRS = [
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-LOGIN_URL = "/accounts/login/"
+LOGIN_URL = "/accounts/login/"  # trùng với route "login" trong config/urls.py
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 
@@ -114,3 +126,21 @@ EMAIL_PORT = config("EMAIL_PORT", default=587, cast=int)
 EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
+EMAIL_TIMEOUT = config("EMAIL_TIMEOUT", default=10, cast=int)
+
+# Seed chỉ được bật trong dev/test, không tạo tài khoản demo ở production.
+ALLOW_DEMO_SEED = False
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "standard": {"format": "{asctime} {levelname} {name} {message}", "style": "{"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "standard"}
+    },
+    "loggers": {
+        "apps": {"handlers": ["console"], "level": "INFO", "propagate": False},
+    },
+}

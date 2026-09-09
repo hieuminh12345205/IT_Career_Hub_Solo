@@ -1,3 +1,5 @@
+import logging
+from functools import partial
 from pathlib import Path
 
 from django.contrib import messages
@@ -22,6 +24,8 @@ from .notifications import (
     notify_candidate_status_changed,
     notify_recruiters_new_application,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class RoleRequiredMixin(UserPassesTestMixin):
@@ -87,16 +91,43 @@ class ApplicationCreateView(
 
     def form_valid(self, form):
         form.instance.candidate = self.request.user
-        form.instance.job = self.get_job()
         try:
-            # Savepoint giúp request vẫn dùng được DB sau lỗi unique constraint.
             with transaction.atomic():
+                # Đọc lại dưới khóa: tin có thể đã đóng từ lúc form được kiểm tra.
+                job = get_object_or_404(
+                    Job.objects.select_for_update(), pk=self.get_job().pk
+                )
+                if not job.is_active:
+                    form.add_error(None, "Công việc này đã đóng ứng tuyển.")
+                    return self.form_invalid(form)
+                if Application.objects.filter(
+                    candidate=self.request.user, job=job
+                ).exists():
+                    form.add_error(None, "Bạn đã ứng tuyển công việc này rồi.")
+                    return self.form_invalid(form)
+                form.instance.job = job
                 response = super().form_valid(form)
+                transaction.on_commit(
+                    partial(notify_recruiters_new_application, self.object), robust=True
+                )
+                transaction.on_commit(
+                    partial(
+                        logger.info,
+                        "application_created actor_id=%s application_id=%s job_id=%s",
+                        self.request.user.pk,
+                        self.object.pk,
+                        job.pk,
+                    )
+                )
         except IntegrityError:
+            # Không che các lỗi dữ liệu khác bằng thông báo đơn trùng.
+            if not Application.objects.filter(
+                candidate=self.request.user, job_id=self.get_job().pk
+            ).exists():
+                raise
             form.add_error(None, "Bạn đã ứng tuyển công việc này rồi.")
             return self.form_invalid(form)
 
-        notify_recruiters_new_application(self.object)
         messages.success(self.request, "Ứng tuyển thành công.")
         return response
 
@@ -161,7 +192,7 @@ class JobApplicantsView(
     def get_queryset(self):
         return Application.objects.filter(
             job=self.get_job(),
-        ).select_related("candidate")
+        ).select_related("candidate", "candidate__candidate_profile")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -209,23 +240,38 @@ def update_application_status(request, pk):
     if not is_recruiter_or_admin(request.user):
         raise PermissionDenied
 
-    application = get_object_or_404(
-        Application.objects.select_related("job", "job__company"),
-        pk=pk,
-        job__in=jobs_managed_by(request.user),
-    )
     new_status = request.POST.get("status")
 
     if new_status not in Application.Status.values:
         return HttpResponseBadRequest("Trạng thái không hợp lệ.")
 
-    if application.status != new_status:
-        application.status = new_status
-        application.save(update_fields=["status"])
-        notify_candidate_status_changed(application)
-        messages.success(request, "Đã cập nhật trạng thái ứng tuyển.")
-    else:
-        messages.info(request, "Trạng thái ứng tuyển không thay đổi.")
+    with transaction.atomic():
+        application = get_object_or_404(
+            Application.objects.select_for_update(),
+            pk=pk,
+            job__in=jobs_managed_by(request.user),
+        )
+        if application.status != new_status:
+            old_status = application.status
+            application.status = new_status
+            application.save(update_fields=["status"])
+            transaction.on_commit(
+                partial(notify_candidate_status_changed, application), robust=True
+            )
+            transaction.on_commit(
+                partial(
+                    logger.info,
+                    "application_status_changed actor_id=%s application_id=%s "
+                    "old_status=%s new_status=%s",
+                    request.user.pk,
+                    application.pk,
+                    old_status,
+                    new_status,
+                )
+            )
+            messages.success(request, "Đã cập nhật trạng thái ứng tuyển.")
+        else:
+            messages.info(request, "Trạng thái ứng tuyển không thay đổi.")
 
     return redirect(
         "applications:job_applicants",
@@ -240,17 +286,22 @@ def toggle_bookmark(request, job_pk):
     if request.user.role != User.Role.CANDIDATE:
         raise PermissionDenied
 
-    job = get_object_or_404(Job, pk=job_pk)
-    bookmark, created = Bookmark.objects.get_or_create(
-        candidate=request.user,
-        job=job,
-    )
+    with transaction.atomic():
+        # Khóa user để hai lần toggle cùng lúc vẫn được xử lý theo thứ tự.
+        User.objects.select_for_update().get(pk=request.user.pk)
+        job = get_object_or_404(Job, pk=job_pk)
+        existing = Bookmark.objects.filter(candidate=request.user, job=job).first()
 
-    if created:
-        messages.success(request, "Đã lưu công việc.")
-    else:
-        bookmark.delete()
-        messages.success(request, "Đã bỏ lưu công việc.")
+        if existing:
+            existing.delete()
+            created = False
+        else:
+            if not job.is_active:
+                raise Http404
+            _, created = Bookmark.objects.get_or_create(candidate=request.user, job=job)
+    messages.success(
+        request, "Đã lưu công việc." if created else "Đã bỏ lưu công việc."
+    )
 
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
         return JsonResponse({"bookmarked": created})

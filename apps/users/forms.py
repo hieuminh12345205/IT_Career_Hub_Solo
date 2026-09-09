@@ -1,27 +1,21 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
+from django.db import transaction
+
+from apps.core.validators import MAX_CV_SIZE, validate_pdf_upload
 
 from .models import CandidateProfile, RecruiterProfile, User
 
-MAX_CV_SIZE = 5 * 1024 * 1024
-
-
-def validate_pdf_upload(uploaded_file):
-    """Validate a newly uploaded CV without trusting its extension alone."""
-    if not uploaded_file:
-        return uploaded_file
-    if not hasattr(uploaded_file, "content_type"):
-        return uploaded_file
-    if uploaded_file.size > MAX_CV_SIZE:
-        raise forms.ValidationError("CV không được lớn hơn 5MB.")
-    if uploaded_file.content_type != "application/pdf":
-        raise forms.ValidationError("CV phải là file PDF hợp lệ.")
-    uploaded_file.seek(0)
-    header = uploaded_file.read(5)
-    uploaded_file.seek(0)
-    if header != b"%PDF-":
-        raise forms.ValidationError("CV phải là file PDF hợp lệ.")
-    return uploaded_file
+__all__ = [
+    "MAX_CV_SIZE",
+    "validate_pdf_upload",
+    "BaseSignUpForm",
+    "CandidateSignUpForm",
+    "RecruiterSignUpForm",
+    "UserUpdateForm",
+    "CandidateProfileForm",
+    "RecruiterProfileForm",
+]
 
 
 class BaseSignUpForm(UserCreationForm):
@@ -43,6 +37,7 @@ class BaseSignUpForm(UserCreationForm):
 
     role = None
 
+    @transaction.atomic
     def save(self, commit=True):
         user = super().save(commit=False)
         user.email = self.cleaned_data["email"]
@@ -109,7 +104,7 @@ class CandidateProfileForm(forms.ModelForm):
         widgets = {
             "bio": forms.Textarea(attrs={"rows": 4}),
             "skills": forms.CheckboxSelectMultiple,
-            "cv_file": forms.FileInput,
+            "cv_file": forms.FileInput(attrs={"accept": ".pdf,application/pdf"}),
         }
 
     def clean_cv_file(self):

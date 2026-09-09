@@ -6,7 +6,7 @@ from .models import CandidateProfile, RecruiterProfile, User
 
 @receiver(post_save, sender=User)
 def create_role_profile(sender, instance, created, **kwargs):
-    if not created:
+    if not created or kwargs.get("raw", False):
         return
 
     if instance.role == User.Role.CANDIDATE:

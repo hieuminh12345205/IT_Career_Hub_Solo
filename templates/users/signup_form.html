@@ -10,10 +10,12 @@
             <div class="card shadow-sm border-0">
                 <div class="card-body p-4">
                     <h1 class="h3 mb-3">{{ title }}</h1>
-                    <form method="post">
+                    <form method="post" novalidate>
                         {% csrf_token %}
                         {{ form|crispy }}
-                        <button type="submit" class="btn btn-primary">Tạo tài khoản</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-person-plus me-1"></i>Tạo tài khoản
+                        </button>
                         <a href="{% url 'users:signup' %}" class="btn btn-link">Quay lại</a>
                     </form>
                 </div>

@@ -1,0 +1,39 @@
+{% comment %}Card tin tuyển dụng dùng chung cho trang chủ và trang tìm việc.{% endcomment %}
+<article class="card job-card h-100 border-0 shadow-sm">
+    <div class="card-body d-flex flex-column">
+        <div class="d-flex align-items-start gap-3 mb-3">
+            {% if job.company.logo %}
+                <img src="{{ job.company.logo.url }}" alt="{{ job.company.name }}" class="company-logo">
+            {% else %}
+                <span class="company-logo company-logo-placeholder">{{ job.company.name|first|upper }}</span>
+            {% endif %}
+            <div class="min-w-0">
+                <h3 class="h6 mb-1">
+                    <a href="{% url 'jobs:detail' job.pk %}" class="stretched-link text-decoration-none">{{ job.title }}</a>
+                </h3>
+                <p class="text-muted small mb-0 text-truncate">{{ job.company.name }}</p>
+            </div>
+        </div>
+
+        <div class="mb-3 d-flex flex-wrap gap-1">
+            <span class="badge rounded-pill text-bg-light border">{{ job.job_type_display_vi }}</span>
+            <span class="badge rounded-pill text-bg-light border">{{ job.experience_level_display_vi }}</span>
+        </div>
+
+        <div class="mb-3">
+            {% for skill in job.skills.all|slice:":4" %}
+                <span class="skill-tag">{{ skill.name }}</span>
+            {% empty %}
+                <span class="text-muted small">Chưa gắn kỹ năng</span>
+            {% endfor %}
+        </div>
+
+        <div class="mt-auto small text-muted d-flex flex-wrap gap-3">
+            <span><i class="bi bi-geo-alt me-1"></i>{{ job.location }}</span>
+            <span class="text-salary"><i class="bi bi-cash-coin me-1"></i>{{ job.salary_display }}</span>
+        </div>
+    </div>
+    <div class="card-footer bg-transparent border-0 pt-0 small text-muted">
+        <i class="bi bi-clock me-1"></i>Đăng ngày {{ job.created_at|date:"d/m/Y" }}
+    </div>
+</article>
